@@ -244,7 +244,14 @@ function Overview() {
                 scrollToSection("timeline");
               }}
             />
-            <AIAssistantSection lang={lang} setLang={setLang} patient={patient} />
+            <AIAssistantSection
+              lang={lang}
+              setLang={setLang}
+              patient={patient}
+              registerSend={(fn) => {
+                aiSendRef.current = fn;
+              }}
+            />
             <EHRSection />
             <RadiologySection />
             <AlertsSection />
