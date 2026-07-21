@@ -346,6 +346,37 @@ function TopBar({
   );
 }
 
+function LiveSpeechCard({
+  listening,
+  transcript,
+}: {
+  listening: boolean;
+  transcript: string;
+}) {
+  const visible = listening || (transcript && transcript.length > 0);
+  if (!visible) return null;
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4">
+      <div className="pointer-events-auto w-full max-w-xl rounded-3xl border border-white/70 bg-white/75 px-5 py-4 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.25)] backdrop-blur-lg">
+        <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-[#F06D6D]">
+          <span className="relative flex h-2.5 w-2.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#F06D6D] opacity-60" />
+            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#F06D6D]" />
+          </span>
+          <Mic className="h-3.5 w-3.5" />
+          <span>{listening ? "Listening…" : "Understanding…"}</span>
+        </div>
+        <div className="mt-2 min-h-[1.5rem] font-[Instrument_Serif,serif] text-2xl leading-snug text-neutral-800">
+          {transcript ? `“${transcript}”` : <span className="text-neutral-400">Speak now…</span>}
+        </div>
+        <div className="mt-2 text-[11px] text-neutral-500">
+          Try: “Open patients”, “Show ECG”, or ask “What are arteries?”
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GlassCard({
   children,
   className = "",
