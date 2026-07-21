@@ -404,8 +404,8 @@ function DashboardSection() {
     <Section id="dashboard" className="pt-4">
       <SectionHeader
         eyebrow="01 — Live overview"
-        title="Good morning, Dr. Reyes."
-        sub="5 patients in your care · 1 critical · 2 pending reviews"
+        title="Greetings, Dr. Ram."
+        sub="6 patients in your care · 1 critical · 2 pending reviews"
       />
       <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
         <div className="grid grid-cols-2 gap-4">
@@ -884,7 +884,7 @@ function EHRSection() {
       <SectionHeader
         eyebrow="05 — EHR Co-pilot"
         title="Synthesize the chart. Suggest the plan."
-        sub="Paste any multi-modal EHR snapshot — history, meds, vitals, labs, imaging. PulseAI returns an evidence-based, guideline-cited plan."
+        sub="Paste any EHR text — history, meds, vitals, labs. PulseAI returns an evidence-based, guideline-cited plan."
       />
       <div className="grid gap-5 lg:grid-cols-2">
         <GlassCard>
