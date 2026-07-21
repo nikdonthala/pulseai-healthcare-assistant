@@ -1139,41 +1139,55 @@ function AlertsSection() {
   );
 }
 
-function TimelineSection() {
-  const items = [
-    ["Today · 09:12", "AI risk score: Sepsis rising", "Lactate recheck ordered"],
-    ["Today · 07:40", "Vitals checked", "HR 82 · SpO₂ 97 · Temp 37.1°C"],
-    ["Yesterday", "Medication administered", "Ceftriaxone 1g IV"],
-    ["2 days ago", "Lab report", "WBC 14.2, CRP 96 mg/L"],
-    ["Admission", "Diagnosis", "Post-op cardiac observation, ward 3B"],
-  ];
+function TimelineSection({
+  patientId,
+  onSelect,
+}: {
+  patientId: string;
+  onSelect: (id: string) => void;
+}) {
+  const patient = getPatient(patientId);
   return (
     <Section id="timeline">
       <SectionHeader
         eyebrow="08 — Patient timeline"
-        title="Amelia Hart · P-1042"
-        sub="One-click access to diagnoses, medications, allergies, labs, and AI-generated summary."
+        title={`${patient.name} · ${patient.id}`}
+        sub={`${patient.age}${patient.gender} · ${patient.bed} · ${patient.doctor} · ${patient.diagnosis}`}
       />
       <GlassCard>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs uppercase tracking-widest text-neutral-400">
+            Switch patient
+          </div>
+          <select
+            value={patientId}
+            onChange={(e) => onSelect(e.target.value)}
+            aria-label="Select patient"
+            className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs text-neutral-700 outline-none focus:border-[#B89AF6]"
+          >
+            {PATIENTS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} · {p.id} · {p.condition}
+              </option>
+            ))}
+          </select>
+        </div>
         <ol className="relative ml-3 border-l border-white/70 pl-6">
-          {items.map(([when, title, body], i) => (
+          {patient.timeline.map((ev, i) => (
             <li key={i} className="mb-6 last:mb-0">
               <span
                 className="absolute -left-[7px] mt-1.5 h-3 w-3 rounded-full border-2 border-white"
                 style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
               />
-              <div className="text-xs uppercase tracking-widest text-neutral-400">{when}</div>
-              <div className="mt-1 text-sm font-medium text-neutral-800">{title}</div>
-              <div className="text-sm text-neutral-500">{body}</div>
+              <div className="text-xs uppercase tracking-widest text-neutral-400">{ev.when}</div>
+              <div className="mt-1 text-sm font-medium text-neutral-800">{ev.title}</div>
+              <div className="text-sm text-neutral-500">{ev.body}</div>
             </li>
           ))}
         </ol>
         <div className="mt-4 rounded-2xl bg-gradient-to-br from-[#F7B58C]/20 via-[#E9C5E9]/30 to-[#B89AF6]/20 p-4 text-sm text-neutral-700">
           <div className="text-xs uppercase tracking-widest text-neutral-500">AI summary</div>
-          <p className="mt-1">
-            62F, post-op cardiac. Vitals mostly stable, but temperature and CRP trending upward
-            over 48h. Suggest early sepsis workup: lactate, blood cultures, reassess in 2h.
-          </p>
+          <p className="mt-1">{patient.aiSummary}</p>
         </div>
       </GlassCard>
     </Section>
