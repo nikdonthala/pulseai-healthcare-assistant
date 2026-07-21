@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -106,16 +106,19 @@ function Overview() {
               e.preventDefault();
               scrollToSection("dashboard");
             }}
-            className="mb-4 flex items-center gap-2"
+            className="mb-5 flex items-center gap-3"
           >
             <span
-              className="flex h-9 w-9 items-center justify-center rounded-2xl text-white shadow-[0_8px_24px_-8px_rgba(184,154,246,0.6)]"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl text-white shadow-[0_8px_24px_-8px_rgba(184,154,246,0.6)]"
               style={{ background: "linear-gradient(135deg,#F7B58C,#E9C5E9,#B89AF6)" }}
             >
-              <HeartPulse className="h-4 w-4" />
+              <HeartPulse className="h-5 w-5" />
             </span>
-            <span className="text-xl font-normal tracking-tight" style={{ fontFamily: "'Instrument Serif', serif" }}>
-              PulseAI
+            <span className="leading-tight">
+              <span className="block text-xl font-normal tracking-tight text-neutral-900" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                PulseAI
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.22em] text-neutral-400">Clinical OS</span>
             </span>
           </a>
 
@@ -148,14 +151,13 @@ function Overview() {
             })}
           </nav>
 
-          <div className="mt-auto rounded-2xl border border-white/70 bg-white/50 p-4 text-xs text-neutral-500 backdrop-blur">
-            <div className="flex items-center gap-2 text-neutral-700">
-              <Wifi className="h-3.5 w-3.5 text-emerald-500" /> All systems online
-            </div>
-            <p className="mt-1.5 leading-relaxed">
-              Voice nav: click the mic and say a section name — "open patients", "go to reports".
-            </p>
-          </div>
+          <Link
+            to="/"
+            className="mt-auto flex items-center justify-between rounded-2xl border border-white/70 bg-white/50 px-4 py-3 text-sm text-neutral-600 backdrop-blur transition hover:bg-white/70"
+          >
+            <span>Back to landing</span>
+            <span className="text-neutral-400">›</span>
+          </Link>
         </aside>
 
         {/* Main scroll area */}
