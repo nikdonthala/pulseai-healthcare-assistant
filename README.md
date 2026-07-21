@@ -393,10 +393,10 @@ It is **not** a substitute for professional medical judgment, diagnosis, or trea
 
 ---
 
-# 👥 Team
+# 👥 Team UCNEXUS
 Nikhilesh Donthala,
 Ronith Thigulla. 
-Team contacts:- nikhileshsai7a23@gmail.com
+Team contacts:- nikhileshsai7a23@gmail.com,
 ronith.thigulla@gmail.com
 **Team Name:** PulseAI
 
