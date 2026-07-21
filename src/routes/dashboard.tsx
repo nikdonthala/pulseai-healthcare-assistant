@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   BrainCircuit,
   ClipboardList,
+  Droplet,
   FileText,
   HeartPulse,
   Mic,
@@ -13,6 +14,7 @@ import {
   Search,
   Settings as SettingsIcon,
   Stethoscope,
+  Thermometer,
   Users,
   Wifi,
 } from "lucide-react";
@@ -314,10 +316,10 @@ function Section({
 
 function DashboardSection() {
   const vitals = [
-    { label: "Heart rate", value: "72", unit: "bpm", color: "#F06D6D" },
-    { label: "SpO₂", value: "98.7", unit: "%", color: "#A88BEF" },
-    { label: "Blood pressure", value: "120/78", unit: "mmHg", color: "#F5A15A" },
-    { label: "Temperature", value: "36.8", unit: "°C", color: "#F49A9A" },
+    { label: "Heart rate", value: "72", unit: "bpm", color: "#F06D6D", Icon: HeartPulse },
+    { label: "SpO₂", value: "98.7", unit: "%", color: "#A88BEF", Icon: Droplet },
+    { label: "Blood pressure", value: "120/78", unit: "mmHg", color: "#F5A15A", Icon: Activity },
+    { label: "Temperature", value: "36.8", unit: "°C", color: "#F49A9A", Icon: Thermometer },
   ];
   return (
     <Section id="dashboard" className="pt-4">
@@ -330,7 +332,10 @@ function DashboardSection() {
         <div className="grid grid-cols-2 gap-4">
           {vitals.map((v) => (
             <GlassCard key={v.label} className="!p-5">
-              <div className="text-xs uppercase tracking-widest text-neutral-400">{v.label}</div>
+              <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-neutral-400">
+                <v.Icon className="h-3.5 w-3.5" style={{ color: v.color }} />
+                {v.label}
+              </div>
               <div className="mt-2 flex items-end gap-1">
                 <div className="text-4xl font-normal text-neutral-900" style={{ fontFamily: "'Instrument Serif', serif" }}>
                   {v.value}
@@ -425,17 +430,23 @@ function DashboardSection() {
           <p className="mt-1 text-sm text-neutral-500">
             No critical events forecast in the next 6 hours.
           </p>
-          <div className="mt-4 space-y-2 text-sm">
+          <div className="mt-4 space-y-3 text-sm">
             {[
-              ["Cardiovascular", "Low", "#A88BEF"],
-              ["Fatigue", "Moderate", "#F5A15A"],
-              ["Hydration", "Low", "#A88BEF"],
-            ].map(([k, v, c]) => (
-              <div key={k} className="flex items-center justify-between rounded-xl bg-white/60 px-3 py-2">
-                <span className="text-neutral-700">{k}</span>
-                <span className="rounded-full px-2 py-0.5 text-xs text-white" style={{ background: c }}>
-                  {v}
-                </span>
+              ["Cardiovascular", "Low", 22, "#A88BEF"],
+              ["Fatigue", "Moderate", 62, "#F5A15A"],
+              ["Hydration", "Low", 28, "#A88BEF"],
+            ].map(([k, v, pct, c]) => (
+              <div key={k as string}>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-neutral-700">{k}</span>
+                  <span className="text-neutral-500">{v}</span>
+                </div>
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200/60">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${pct as number}%`, background: c as string }}
+                  />
+                </div>
               </div>
             ))}
           </div>
