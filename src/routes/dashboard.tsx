@@ -405,7 +405,7 @@ function DashboardSection() {
       <SectionHeader
         eyebrow="01 — Live overview"
         title="Greetings, Dr. Ram."
-        sub="6 patients in your care · 1 critical · 2 pending reviews"
+        sub="8 patients in your care · 1 critical · 2 pending reviews"
       />
       <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
         <div className="grid grid-cols-2 gap-4">
