@@ -13,6 +13,7 @@ import { Route as RadiologyRouteImport } from './routes/radiology'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CopilotRouteImport } from './routes/copilot'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiChatRouteImport } from './routes/api/chat'
 
 const RadiologyRoute = RadiologyRouteImport.update({
   id: '/radiology',
@@ -34,18 +35,25 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiChatRoute = ApiChatRouteImport.update({
+  id: '/api/chat',
+  path: '/api/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/copilot': typeof CopilotRoute
   '/dashboard': typeof DashboardRoute
   '/radiology': typeof RadiologyRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/copilot': typeof CopilotRoute
   '/dashboard': typeof DashboardRoute
   '/radiology': typeof RadiologyRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/copilot': typeof CopilotRoute
   '/dashboard': typeof DashboardRoute
   '/radiology': typeof RadiologyRoute
+  '/api/chat': typeof ApiChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/copilot' | '/dashboard' | '/radiology'
+  fullPaths: '/' | '/copilot' | '/dashboard' | '/radiology' | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/copilot' | '/dashboard' | '/radiology'
-  id: '__root__' | '/' | '/copilot' | '/dashboard' | '/radiology'
+  to: '/' | '/copilot' | '/dashboard' | '/radiology' | '/api/chat'
+  id: '__root__' | '/' | '/copilot' | '/dashboard' | '/radiology' | '/api/chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +76,7 @@ export interface RootRouteChildren {
   CopilotRoute: typeof CopilotRoute
   DashboardRoute: typeof DashboardRoute
   RadiologyRoute: typeof RadiologyRoute
+  ApiChatRoute: typeof ApiChatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +109,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/chat': {
+      id: '/api/chat'
+      path: '/api/chat'
+      fullPath: '/api/chat'
+      preLoaderRoute: typeof ApiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,17 +124,8 @@ const rootRouteChildren: RootRouteChildren = {
   CopilotRoute: CopilotRoute,
   DashboardRoute: DashboardRoute,
   RadiologyRoute: RadiologyRoute,
+  ApiChatRoute: ApiChatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
