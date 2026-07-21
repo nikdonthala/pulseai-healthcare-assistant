@@ -337,11 +337,6 @@ function TopBar({
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> Live
         </div>
       </div>
-      {listening && transcript && (
-        <div className="mx-auto max-w-6xl px-5 pb-2 text-xs text-neutral-500 sm:px-8">
-          Heard: <span className="text-neutral-700">"{transcript}"</span>
-        </div>
-      )}
     </div>
   );
 }
