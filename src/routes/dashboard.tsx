@@ -600,15 +600,13 @@ function MiniStat({ label, value, color }: { label: string; value: React.ReactNo
   );
 }
 
-function PatientsSection() {
-  const rows = [
-    ["Amelia Hart", "62", "P-1042", "ICU-04", "Post-op cardiac", "Moderate"],
-    ["James O'Neill", "71", "P-1043", "ICU-12", "Sepsis observation", "High"],
-    ["Priya Shah", "34", "P-1044", "ICU-03", "Pneumonia", "Low"],
-    ["Marcus Lee", "48", "P-1045", "ICU-09", "Arrhythmia", "Moderate"],
-    ["Sofia García", "29", "P-1046", "ICU-05", "Post-partum", "Low"],
-    ["Henrik Bakke", "66", "P-1047", "ICU-11", "COPD flare", "High"],
-  ];
+function PatientsSection({
+  patientId,
+  onSelect,
+}: {
+  patientId: string;
+  onSelect: (id: string) => void;
+}) {
   return (
     <Section id="patients">
       <SectionHeader
@@ -626,29 +624,44 @@ function PatientsSection() {
           <div>Risk</div>
           <div />
         </div>
-        {rows.map(([name, age, id, bed, cond, risk]) => (
-          <div
-            key={id}
-            className="grid grid-cols-[1.4fr_60px_1fr_1fr_1.4fr_1fr_120px] items-center gap-4 border-b border-white/50 px-6 py-4 text-sm last:border-0 hover:bg-white/40"
-          >
-            <div className="font-medium text-neutral-800">{name}</div>
-            <div className="text-neutral-500">{age}</div>
-            <div className="text-neutral-500">{id}</div>
-            <div className="text-neutral-500">{bed}</div>
-            <div className="text-neutral-700">{cond}</div>
-            <div>
-              <span
-                className="rounded-full px-2 py-0.5 text-[11px] text-white"
-                style={{
-                  background: risk === "High" ? "#F06D6D" : risk === "Moderate" ? "#F5A15A" : "#A88BEF",
-                }}
+        {PATIENTS.map((p) => {
+          const isActive = p.id === patientId;
+          return (
+            <div
+              key={p.id}
+              className={`grid grid-cols-[1.4fr_60px_1fr_1fr_1.4fr_1fr_120px] items-center gap-4 border-b border-white/50 px-6 py-4 text-sm last:border-0 transition ${
+                isActive ? "bg-white/60" : "hover:bg-white/40"
+              }`}
+            >
+              <div className="font-medium text-neutral-800">{p.name}</div>
+              <div className="text-neutral-500">{p.age}</div>
+              <div className="text-neutral-500">{p.id}</div>
+              <div className="text-neutral-500">{p.bed}</div>
+              <div className="text-neutral-700">{p.condition}</div>
+              <div>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] text-white"
+                  style={{
+                    background:
+                      p.risk === "High" || p.risk === "Critical"
+                        ? "#F06D6D"
+                        : p.risk === "Moderate"
+                        ? "#F5A15A"
+                        : "#A88BEF",
+                  }}
+                >
+                  {p.risk}
+                </span>
+              </div>
+              <button
+                onClick={() => onSelect(p.id)}
+                className="text-xs text-[#B89AF6] hover:underline"
               >
-                {risk}
-              </span>
+                Open timeline →
+              </button>
             </div>
-            <button className="text-xs text-[#B89AF6] hover:underline">Open timeline →</button>
-          </div>
-        ))}
+          );
+        })}
       </GlassCard>
     </Section>
   );
@@ -657,9 +670,11 @@ function PatientsSection() {
 function AIAssistantSection({
   lang,
   setLang,
+  patient,
 }: {
   lang: string;
   setLang: (l: string) => void;
+  patient: Patient;
 }) {
   type Msg = { role: "user" | "assistant"; content: string };
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -678,6 +693,20 @@ function AIAssistantSection({
     if (!q || streaming) return;
     setErr(null);
     const history: Msg[] = [...messages, { role: "user", content: q }];
+    const patientContext: Msg = {
+      role: "user",
+      content:
+        `[Active patient context — use for any patient-specific questions]\n` +
+        `Name: ${patient.name} (${patient.id}), ${patient.age}${patient.gender}, ${patient.bloodGroup}\n` +
+        `Bed: ${patient.bed} · Doctor: ${patient.doctor}\n` +
+        `Diagnosis: ${patient.diagnosis} · Status: ${patient.status} · Risk: ${patient.risk}\n` +
+        `Latest vitals — HR ${patient.vitals.hr}, BP ${patient.vitals.sys}/${patient.vitals.dia}, SpO₂ ${patient.vitals.spo2}%, Temp ${patient.vitals.temp}°C, RR ${patient.vitals.rr}\n` +
+        `Recent timeline: ${patient.timeline
+          .slice(0, 4)
+          .map((t) => `${t.when} — ${t.title}: ${t.body}`)
+          .join(" | ")}\n` +
+        `AI summary: ${patient.aiSummary}`,
+    };
     setMessages([...history, { role: "assistant", content: "" }]);
     setInput("");
     setStreaming(true);
@@ -688,7 +717,10 @@ function AIAssistantSection({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: history, language: lang }),
+        body: JSON.stringify({
+          messages: [patientContext, ...history],
+          language: lang,
+        }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
