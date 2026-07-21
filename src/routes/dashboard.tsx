@@ -265,6 +265,8 @@ function Overview() {
           </div>
         </main>
       </div>
+
+      <LiveSpeechCard listening={listening} transcript={transcript} />
     </div>
   );
 }
