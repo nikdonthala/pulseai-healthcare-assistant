@@ -28,19 +28,20 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   return (
-    <div className="pulse-dark relative min-h-screen overflow-hidden">
-      {/* Cinematic dark mesh background */}
+    <div className="relative min-h-screen overflow-hidden">
+      {/* Warm ivory mesh background */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(1200px 800px at 8% -10%, rgba(0,229,255,0.18), transparent 60%)," +
-            "radial-gradient(900px 700px at 100% 10%, rgba(136,92,246,0.28), transparent 60%)," +
-            "radial-gradient(1100px 900px at 50% 120%, rgba(255,59,92,0.18), transparent 60%)," +
-            "#050816",
+            "radial-gradient(1200px 800px at 8% -10%, rgba(247,181,140,0.35), transparent 60%)," +
+            "radial-gradient(900px 700px at 100% 10%, rgba(184,154,246,0.28), transparent 60%)," +
+            "radial-gradient(1100px 900px at 50% 120%, rgba(240,109,109,0.20), transparent 60%)," +
+            "#FFF8F4",
         }}
       />
+
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10 opacity-[0.35] mix-blend-screen"
