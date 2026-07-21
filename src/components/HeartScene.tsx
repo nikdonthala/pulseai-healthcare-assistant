@@ -1,122 +1,141 @@
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, Float, OrbitControls, Sparkles } from "@react-three/drei";
+import { ContactShadows, Environment, OrbitControls, Sparkles } from "@react-three/drei";
 import { useMemo, useRef, Suspense } from "react";
 import * as THREE from "three";
 import type { Group, Mesh } from "three";
 
-/** Build an anatomically-inspired heart via an extruded 2D silhouette. */
+/** Anatomically-inspired heart via extruded silhouette + subtle atria bumps. */
 function useHeartGeometry() {
   return useMemo(() => {
     const shape = new THREE.Shape();
-    // Silhouette drawn top-down; apex tapers naturally at the bottom.
-    // Coordinates are in a ~2-unit box; we rescale after extrusion.
-    shape.moveTo(0, 0.55);
-    // Left atrium (upper lobe)
-    shape.bezierCurveTo(-0.35, 1.15, -1.25, 1.05, -1.25, 0.35);
-    // Left ventricle wall curving toward apex
-    shape.bezierCurveTo(-1.25, -0.15, -0.9, -0.55, -0.35, -0.95);
-    // Apex — soft, slightly rounded rather than a sharp point
-    shape.bezierCurveTo(-0.18, -1.15, 0.18, -1.15, 0.35, -0.95);
-    // Right ventricle back up
-    shape.bezierCurveTo(0.9, -0.55, 1.25, -0.15, 1.25, 0.35);
-    // Right atrium (upper lobe)
-    shape.bezierCurveTo(1.25, 1.05, 0.35, 1.15, 0, 0.55);
+    // Classic cardioid silhouette with a naturally tapered apex.
+    shape.moveTo(0, 0.5);
+    shape.bezierCurveTo(-0.25, 1.1, -1.15, 1.05, -1.15, 0.3);
+    shape.bezierCurveTo(-1.15, -0.25, -0.75, -0.6, -0.28, -1.0);
+    shape.bezierCurveTo(-0.14, -1.18, 0.14, -1.18, 0.28, -1.0);
+    shape.bezierCurveTo(0.75, -0.6, 1.15, -0.25, 1.15, 0.3);
+    shape.bezierCurveTo(1.15, 1.05, 0.25, 1.1, 0, 0.5);
 
     const geo = new THREE.ExtrudeGeometry(shape, {
-      depth: 0.9,
+      depth: 1.05,
       bevelEnabled: true,
-      bevelThickness: 0.35,
-      bevelSize: 0.32,
-      bevelSegments: 14,
-      curveSegments: 64,
-      steps: 2,
+      bevelThickness: 0.45,
+      bevelSize: 0.42,
+      bevelSegments: 18,
+      curveSegments: 96,
+      steps: 3,
     });
     geo.center();
-    // Slight non-uniform scale to make it feel like a real heart, not a flat cutout.
-    geo.scale(1.0, 1.0, 0.95);
+    // Slightly compress the "back" so the profile isn't a puffy pillow.
+    geo.scale(1.0, 1.0, 0.85);
     geo.computeVertexNormals();
     return geo;
   }, []);
 }
 
-function HeartMesh() {
+function HeartMesh({ bpm = 74 }: { bpm?: number }) {
   const group = useRef<Group>(null);
   const mesh = useRef<Mesh>(null);
+  const glow = useRef<Mesh>(null);
   const geometry = useHeartGeometry();
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     const t = state.clock.getElapsedTime();
-    // Two-phase heartbeat (systole/diastole) — subtle and organic.
-    const beat =
-      1 +
-      0.045 * Math.max(0, Math.sin(t * 2.4)) +
-      0.028 * Math.max(0, Math.sin(t * 2.4 - 0.35));
+    const hz = Math.max(0.8, Math.min(1.6, bpm / 60));
+    // Two-phase heartbeat (systole/diastole).
+    const phase = (t * hz) % 1;
+    const contract = phase < 0.18 ? Math.sin((phase / 0.18) * Math.PI) : 0;
+    const rebound = phase >= 0.22 && phase < 0.34
+      ? Math.sin(((phase - 0.22) / 0.12) * Math.PI) * 0.5
+      : 0;
+    const beat = 1 + 0.055 * contract + 0.025 * rebound;
     if (mesh.current) {
       mesh.current.scale.setScalar(beat);
+      mesh.current.rotation.z = Math.sin(t * hz * Math.PI) * 0.012;
     }
-    if (group.current) {
-      // Gentle, slow drift — never rapid spinning.
-      group.current.rotation.y += delta * 0.15;
-      group.current.rotation.x = Math.sin(t * 0.3) * 0.08;
+    if (glow.current) {
+      const mat = glow.current.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.07 + 0.11 * contract;
+      glow.current.scale.setScalar(0.9 + 0.05 * contract);
     }
   });
 
   return (
-    <group ref={group} rotation={[0, 0, Math.PI]}>
-      {/* rotate π on Z so the apex points down as drawn */}
+    <group ref={group}>
       <mesh ref={mesh} geometry={geometry} castShadow receiveShadow>
         <meshPhysicalMaterial
           color="#c02236"
-          roughness={0.28}
-          metalness={0.05}
-          clearcoat={0.9}
-          clearcoatRoughness={0.18}
-          sheen={0.5}
+          roughness={0.32}
+          metalness={0.04}
+          clearcoat={0.95}
+          clearcoatRoughness={0.16}
+          sheen={0.6}
           sheenColor="#ff8a9a"
-          sheenRoughness={0.6}
-          reflectivity={0.35}
+          sheenRoughness={0.55}
+          reflectivity={0.4}
           emissive="#3b0810"
-          emissiveIntensity={0.35}
+          emissiveIntensity={0.32}
+          transmission={0.05}
+          thickness={0.6}
         />
       </mesh>
-      {/* Soft inner glow to hint at translucency */}
-      <mesh scale={0.82}>
-        <sphereGeometry args={[0.9, 48, 48]} />
-        <meshBasicMaterial color="#ff5a72" transparent opacity={0.08} />
+      {/* Inner pulse glow synchronized to heartbeat */}
+      <mesh ref={glow}>
+        <sphereGeometry args={[1.0, 48, 48]} />
+        <meshBasicMaterial color="#ff5a72" transparent opacity={0.1} />
       </mesh>
     </group>
   );
 }
 
-export function HeartScene() {
+export function HeartScene({ bpm = 74 }: { bpm?: number }) {
   return (
     <Canvas
-      camera={{ position: [0, 0.1, 4.4], fov: 42 }}
+      camera={{ position: [0, 0.1, 4.6], fov: 42 }}
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: true }}
+      shadows
     >
       <color attach="background" args={["#00000000"]} />
 
-      {/* Warm, editorial lighting */}
+      {/* Warm editorial lighting */}
       <ambientLight intensity={0.55} />
-      <directionalLight position={[3, 4, 5]} intensity={1.2} color="#fff2e8" />
+      <directionalLight
+        position={[3, 4, 5]}
+        intensity={1.3}
+        color="#fff2e8"
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+      />
       <pointLight position={[-4, -2, 2]} intensity={0.9} color="#f7b58c" />
-      <pointLight position={[3, -3, -2]} intensity={0.5} color="#e9c5e9" />
-      <pointLight position={[0, 5, 2]} intensity={0.35} color="#b89af6" />
+      <pointLight position={[3, -3, -2]} intensity={0.55} color="#e9c5e9" />
+      <pointLight position={[0, 5, 2]} intensity={0.4} color="#b89af6" />
 
       <Suspense fallback={null}>
         <Environment preset="studio" />
-        <Float speed={1.1} rotationIntensity={0.15} floatIntensity={0.35}>
-          <HeartMesh />
-        </Float>
+        <HeartMesh bpm={bpm} />
+        <ContactShadows
+          position={[0, -1.7, 0]}
+          opacity={0.35}
+          scale={7}
+          blur={2.4}
+          far={3}
+          color="#5b1226"
+        />
         <Sparkles count={40} scale={5.5} size={1.6} speed={0.25} color="#f7b58c" opacity={0.55} />
       </Suspense>
 
       <OrbitControls
         enableZoom={false}
         enablePan={false}
-        autoRotate={false}
-        rotateSpeed={0.6}
+        enableDamping
+        dampingFactor={0.08}
+        rotateSpeed={0.8}
+        autoRotate
+        autoRotateSpeed={0.9}
+        // Allow full 360° in every direction
+        minPolarAngle={0}
+        maxPolarAngle={Math.PI}
         makeDefault
       />
     </Canvas>
