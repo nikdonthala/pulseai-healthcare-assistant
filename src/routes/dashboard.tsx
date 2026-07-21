@@ -84,19 +84,20 @@ function Overview() {
   }, [ids]);
 
   return (
-    <div className="pulse-dark pulse-ivory min-h-screen">
-      {/* Cinematic dark mesh background */}
+    <div className="pulse-ivory min-h-screen">
+      {/* Warm ivory mesh background */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(1200px 800px at 8% -10%, rgba(0,229,255,0.16), transparent 60%)," +
-            "radial-gradient(900px 700px at 100% 10%, rgba(136,92,246,0.26), transparent 60%)," +
-            "radial-gradient(1000px 900px at 50% 120%, rgba(255,59,92,0.16), transparent 60%)," +
-            "#050816",
+            "radial-gradient(1200px 800px at 8% -10%, rgba(247,181,140,0.35), transparent 60%)," +
+            "radial-gradient(900px 700px at 100% 10%, rgba(233,197,233,0.35), transparent 60%)," +
+            "radial-gradient(1000px 900px at 50% 120%, rgba(184,154,246,0.22), transparent 60%)," +
+            "#FFF8F4",
         }}
       />
+
 
       <div className="flex">
         {/* Sidebar */}
