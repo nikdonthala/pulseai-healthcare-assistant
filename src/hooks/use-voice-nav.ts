@@ -14,6 +14,7 @@ export type VoiceCommand = {
 export function useVoiceNav(
   commands: VoiceCommand[],
   onMatch: (target: string) => void,
+  lang: string = "en-US",
 ) {
   const [listening, setListening] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -30,7 +31,7 @@ export function useVoiceNav(
     const rec = new SRClass();
     rec.continuous = false;
     rec.interimResults = true;
-    rec.lang = "en-US";
+    rec.lang = lang;
     rec.onresult = (e: any) => {
       let text = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -55,7 +56,7 @@ export function useVoiceNav(
         rec.stop();
       } catch {}
     };
-  }, [commands, onMatch]);
+  }, [commands, onMatch, lang]);
 
   const start = useCallback(() => {
     if (!recRef.current || listening) return;
