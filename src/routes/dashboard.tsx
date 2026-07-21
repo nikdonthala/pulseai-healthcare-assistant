@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -8,21 +9,30 @@ import {
   Droplet,
   FileText,
   HeartPulse,
+  Loader2,
   Mic,
   MicOff,
   ScanLine,
   Search,
+  Send,
   Settings as SettingsIcon,
   Stethoscope,
   Thermometer,
+  Upload,
   Users,
 } from "lucide-react";
 import { scrollToSection, useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useVoiceNav, type VoiceCommand } from "@/hooks/use-voice-nav";
+import { useLiveVitals, useStreamSeries } from "@/hooks/use-live-vitals";
+import { EcgCanvas, StreamLine } from "@/components/EcgCanvas";
+import { SearchPalette, type SearchItem } from "@/components/SearchPalette";
+import { chatCopilot, summarizeRadiology } from "@/lib/ai.functions";
+import { Markdown } from "@/lib/markdown";
 
 const HeartScene = lazy(() =>
   import("@/components/HeartScene").then((m) => ({ default: m.HeartScene })),
 );
+
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
