@@ -28,6 +28,7 @@ import { EcgCanvas, StreamLine } from "@/components/EcgCanvas";
 import { SearchPalette, type SearchItem } from "@/components/SearchPalette";
 import { chatCopilot, summarizeRadiology } from "@/lib/ai.functions";
 import { Markdown } from "@/lib/markdown";
+import { PATIENTS, getPatient, type Patient } from "@/lib/patients";
 
 /** Supported multilingual assistant languages (BCP-47 for SpeechRecognition). */
 export const LANGS: { code: string; bcp47: string; label: string; flag: string }[] = [
@@ -86,6 +87,8 @@ function Overview() {
   const active = useScrollSpy(ids);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lang, setLang] = useState("en");
+  const [patientId, setPatientId] = useState(PATIENTS[0].id);
+  const patient = getPatient(patientId);
   const bcp47 = LANGS.find((l) => l.code === lang)?.bcp47 ?? "en-US";
 
   const commands: VoiceCommand[] = useMemo(
@@ -105,12 +108,12 @@ function Overview() {
   const searchItems: SearchItem[] = useMemo(
     () => [
       ...SECTIONS.map((s) => ({ id: s.id, label: s.label, section: "Navigation", keywords: s.phrases.join(" ") })),
-      { id: "patients", label: "Amelia Hart · P-1042 · ICU-04", section: "Patients", keywords: "amelia hart post-op cardiac" },
-      { id: "patients", label: "James O'Neill · P-1043 · ICU-12", section: "Patients", keywords: "james oneill sepsis" },
-      { id: "patients", label: "Priya Shah · P-1044 · ICU-03", section: "Patients", keywords: "priya shah pneumonia" },
-      { id: "patients", label: "Marcus Lee · P-1045 · ICU-09", section: "Patients", keywords: "marcus lee arrhythmia" },
-      { id: "patients", label: "Sofia García · P-1046 · ICU-05", section: "Patients", keywords: "sofia garcia post-partum" },
-      { id: "patients", label: "Henrik Bakke · P-1047 · ICU-11", section: "Patients", keywords: "henrik bakke copd" },
+      ...PATIENTS.map((p) => ({
+        id: "patients",
+        label: `${p.name} · ${p.id} · ${p.bed}`,
+        section: "Patients",
+        keywords: `${p.name} ${p.id} ${p.bed} ${p.condition} ${p.diagnosis} ${p.doctor}`,
+      })),
       { id: "reports", label: "Ward 3B daily vitals summary", section: "Reports" },
       { id: "reports", label: "Sepsis risk cohort — weekly", section: "Reports" },
       { id: "alerts", label: "Rising sepsis risk — James O'Neill", section: "Alerts" },
@@ -228,12 +231,18 @@ function Overview() {
           <div className="mx-auto max-w-6xl px-5 pb-32 pt-6 sm:px-8">
             <DashboardSection />
             <LiveMonitoringSection />
-            <PatientsSection />
-            <AIAssistantSection lang={lang} setLang={setLang} />
+            <PatientsSection
+              patientId={patientId}
+              onSelect={(id) => {
+                setPatientId(id);
+                scrollToSection("timeline");
+              }}
+            />
+            <AIAssistantSection lang={lang} setLang={setLang} patient={patient} />
             <EHRSection />
             <RadiologySection />
             <AlertsSection />
-            <TimelineSection />
+            <TimelineSection patientId={patientId} onSelect={setPatientId} />
             <ReportsSection />
             <SettingsSection />
 
@@ -591,15 +600,13 @@ function MiniStat({ label, value, color }: { label: string; value: React.ReactNo
   );
 }
 
-function PatientsSection() {
-  const rows = [
-    ["Amelia Hart", "62", "P-1042", "ICU-04", "Post-op cardiac", "Moderate"],
-    ["James O'Neill", "71", "P-1043", "ICU-12", "Sepsis observation", "High"],
-    ["Priya Shah", "34", "P-1044", "ICU-03", "Pneumonia", "Low"],
-    ["Marcus Lee", "48", "P-1045", "ICU-09", "Arrhythmia", "Moderate"],
-    ["Sofia García", "29", "P-1046", "ICU-05", "Post-partum", "Low"],
-    ["Henrik Bakke", "66", "P-1047", "ICU-11", "COPD flare", "High"],
-  ];
+function PatientsSection({
+  patientId,
+  onSelect,
+}: {
+  patientId: string;
+  onSelect: (id: string) => void;
+}) {
   return (
     <Section id="patients">
       <SectionHeader
@@ -617,29 +624,44 @@ function PatientsSection() {
           <div>Risk</div>
           <div />
         </div>
-        {rows.map(([name, age, id, bed, cond, risk]) => (
-          <div
-            key={id}
-            className="grid grid-cols-[1.4fr_60px_1fr_1fr_1.4fr_1fr_120px] items-center gap-4 border-b border-white/50 px-6 py-4 text-sm last:border-0 hover:bg-white/40"
-          >
-            <div className="font-medium text-neutral-800">{name}</div>
-            <div className="text-neutral-500">{age}</div>
-            <div className="text-neutral-500">{id}</div>
-            <div className="text-neutral-500">{bed}</div>
-            <div className="text-neutral-700">{cond}</div>
-            <div>
-              <span
-                className="rounded-full px-2 py-0.5 text-[11px] text-white"
-                style={{
-                  background: risk === "High" ? "#F06D6D" : risk === "Moderate" ? "#F5A15A" : "#A88BEF",
-                }}
+        {PATIENTS.map((p) => {
+          const isActive = p.id === patientId;
+          return (
+            <div
+              key={p.id}
+              className={`grid grid-cols-[1.4fr_60px_1fr_1fr_1.4fr_1fr_120px] items-center gap-4 border-b border-white/50 px-6 py-4 text-sm last:border-0 transition ${
+                isActive ? "bg-white/60" : "hover:bg-white/40"
+              }`}
+            >
+              <div className="font-medium text-neutral-800">{p.name}</div>
+              <div className="text-neutral-500">{p.age}</div>
+              <div className="text-neutral-500">{p.id}</div>
+              <div className="text-neutral-500">{p.bed}</div>
+              <div className="text-neutral-700">{p.condition}</div>
+              <div>
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] text-white"
+                  style={{
+                    background:
+                      p.risk === "High" || p.risk === "Critical"
+                        ? "#F06D6D"
+                        : p.risk === "Moderate"
+                        ? "#F5A15A"
+                        : "#A88BEF",
+                  }}
+                >
+                  {p.risk}
+                </span>
+              </div>
+              <button
+                onClick={() => onSelect(p.id)}
+                className="text-xs text-[#B89AF6] hover:underline"
               >
-                {risk}
-              </span>
+                Open timeline →
+              </button>
             </div>
-            <button className="text-xs text-[#B89AF6] hover:underline">Open timeline →</button>
-          </div>
-        ))}
+          );
+        })}
       </GlassCard>
     </Section>
   );
@@ -648,9 +670,11 @@ function PatientsSection() {
 function AIAssistantSection({
   lang,
   setLang,
+  patient,
 }: {
   lang: string;
   setLang: (l: string) => void;
+  patient: Patient;
 }) {
   type Msg = { role: "user" | "assistant"; content: string };
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -669,6 +693,20 @@ function AIAssistantSection({
     if (!q || streaming) return;
     setErr(null);
     const history: Msg[] = [...messages, { role: "user", content: q }];
+    const patientContext: Msg = {
+      role: "user",
+      content:
+        `[Active patient context — use for any patient-specific questions]\n` +
+        `Name: ${patient.name} (${patient.id}), ${patient.age}${patient.gender}, ${patient.bloodGroup}\n` +
+        `Bed: ${patient.bed} · Doctor: ${patient.doctor}\n` +
+        `Diagnosis: ${patient.diagnosis} · Status: ${patient.status} · Risk: ${patient.risk}\n` +
+        `Latest vitals — HR ${patient.vitals.hr}, BP ${patient.vitals.sys}/${patient.vitals.dia}, SpO₂ ${patient.vitals.spo2}%, Temp ${patient.vitals.temp}°C, RR ${patient.vitals.rr}\n` +
+        `Recent timeline: ${patient.timeline
+          .slice(0, 4)
+          .map((t) => `${t.when} — ${t.title}: ${t.body}`)
+          .join(" | ")}\n` +
+        `AI summary: ${patient.aiSummary}`,
+    };
     setMessages([...history, { role: "assistant", content: "" }]);
     setInput("");
     setStreaming(true);
@@ -679,7 +717,10 @@ function AIAssistantSection({
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: history, language: lang }),
+        body: JSON.stringify({
+          messages: [patientContext, ...history],
+          language: lang,
+        }),
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
@@ -1098,41 +1139,55 @@ function AlertsSection() {
   );
 }
 
-function TimelineSection() {
-  const items = [
-    ["Today · 09:12", "AI risk score: Sepsis rising", "Lactate recheck ordered"],
-    ["Today · 07:40", "Vitals checked", "HR 82 · SpO₂ 97 · Temp 37.1°C"],
-    ["Yesterday", "Medication administered", "Ceftriaxone 1g IV"],
-    ["2 days ago", "Lab report", "WBC 14.2, CRP 96 mg/L"],
-    ["Admission", "Diagnosis", "Post-op cardiac observation, ward 3B"],
-  ];
+function TimelineSection({
+  patientId,
+  onSelect,
+}: {
+  patientId: string;
+  onSelect: (id: string) => void;
+}) {
+  const patient = getPatient(patientId);
   return (
     <Section id="timeline">
       <SectionHeader
         eyebrow="08 — Patient timeline"
-        title="Amelia Hart · P-1042"
-        sub="One-click access to diagnoses, medications, allergies, labs, and AI-generated summary."
+        title={`${patient.name} · ${patient.id}`}
+        sub={`${patient.age}${patient.gender} · ${patient.bed} · ${patient.doctor} · ${patient.diagnosis}`}
       />
       <GlassCard>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs uppercase tracking-widest text-neutral-400">
+            Switch patient
+          </div>
+          <select
+            value={patientId}
+            onChange={(e) => onSelect(e.target.value)}
+            aria-label="Select patient"
+            className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs text-neutral-700 outline-none focus:border-[#B89AF6]"
+          >
+            {PATIENTS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} · {p.id} · {p.condition}
+              </option>
+            ))}
+          </select>
+        </div>
         <ol className="relative ml-3 border-l border-white/70 pl-6">
-          {items.map(([when, title, body], i) => (
+          {patient.timeline.map((ev, i) => (
             <li key={i} className="mb-6 last:mb-0">
               <span
                 className="absolute -left-[7px] mt-1.5 h-3 w-3 rounded-full border-2 border-white"
                 style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
               />
-              <div className="text-xs uppercase tracking-widest text-neutral-400">{when}</div>
-              <div className="mt-1 text-sm font-medium text-neutral-800">{title}</div>
-              <div className="text-sm text-neutral-500">{body}</div>
+              <div className="text-xs uppercase tracking-widest text-neutral-400">{ev.when}</div>
+              <div className="mt-1 text-sm font-medium text-neutral-800">{ev.title}</div>
+              <div className="text-sm text-neutral-500">{ev.body}</div>
             </li>
           ))}
         </ol>
         <div className="mt-4 rounded-2xl bg-gradient-to-br from-[#F7B58C]/20 via-[#E9C5E9]/30 to-[#B89AF6]/20 p-4 text-sm text-neutral-700">
           <div className="text-xs uppercase tracking-widest text-neutral-500">AI summary</div>
-          <p className="mt-1">
-            62F, post-op cardiac. Vitals mostly stable, but temperature and CRP trending upward
-            over 48h. Suggest early sepsis workup: lactate, blood cultures, reassess in 2h.
-          </p>
+          <p className="mt-1">{patient.aiSummary}</p>
         </div>
       </GlassCard>
     </Section>
