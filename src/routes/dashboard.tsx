@@ -16,7 +16,6 @@ import {
   Stethoscope,
   Thermometer,
   Users,
-  Wifi,
 } from "lucide-react";
 import { scrollToSection, useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useVoiceNav, type VoiceCommand } from "@/hooks/use-voice-nav";
