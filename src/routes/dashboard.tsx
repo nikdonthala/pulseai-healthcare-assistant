@@ -70,6 +70,7 @@ const SECTIONS = [
 function Overview() {
   const ids = useMemo(() => SECTIONS.map((s) => s.id), []);
   const active = useScrollSpy(ids);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const commands: VoiceCommand[] = useMemo(
     () => [
@@ -82,6 +83,25 @@ function Overview() {
   const { listening, transcript, supported, start, stop } = useVoiceNav(
     commands,
     (target) => scrollToSection(target),
+  );
+
+  const searchItems: SearchItem[] = useMemo(
+    () => [
+      ...SECTIONS.map((s) => ({ id: s.id, label: s.label, section: "Navigation", keywords: s.phrases.join(" ") })),
+      { id: "patients", label: "Amelia Hart · P-1042 · ICU-04", section: "Patients", keywords: "amelia hart post-op cardiac" },
+      { id: "patients", label: "James O'Neill · P-1043 · ICU-12", section: "Patients", keywords: "james oneill sepsis" },
+      { id: "patients", label: "Priya Shah · P-1044 · ICU-03", section: "Patients", keywords: "priya shah pneumonia" },
+      { id: "patients", label: "Marcus Lee · P-1045 · ICU-09", section: "Patients", keywords: "marcus lee arrhythmia" },
+      { id: "patients", label: "Sofia García · P-1046 · ICU-05", section: "Patients", keywords: "sofia garcia post-partum" },
+      { id: "patients", label: "Henrik Bakke · P-1047 · ICU-11", section: "Patients", keywords: "henrik bakke copd" },
+      { id: "reports", label: "Ward 3B daily vitals summary", section: "Reports" },
+      { id: "reports", label: "Sepsis risk cohort — weekly", section: "Reports" },
+      { id: "alerts", label: "Rising sepsis risk — James O'Neill", section: "Alerts" },
+      { id: "ai-assistant", label: "Ask PulseAI about a patient", section: "AI" },
+      { id: "ehr", label: "EHR Co-pilot", section: "AI" },
+      { id: "radiology", label: "Radiology summarizer", section: "AI" },
+    ],
+    [],
   );
 
   // Deep-link on load
@@ -108,6 +128,12 @@ function Overview() {
         }}
       />
 
+      <SearchPalette
+        items={searchItems}
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onSelect={(it) => scrollToSection(it.id)}
+      />
 
       <div className="flex">
         {/* Sidebar */}
@@ -179,6 +205,7 @@ function Overview() {
             supported={supported}
             transcript={transcript}
             onMic={() => (listening ? stop() : start())}
+            onOpenSearch={() => setPaletteOpen(true)}
           />
 
           <div className="mx-auto max-w-6xl px-5 pb-32 pt-6 sm:px-8">
@@ -202,6 +229,7 @@ function Overview() {
     </div>
   );
 }
+
 
 /* ---------------- shared bits ---------------- */
 
