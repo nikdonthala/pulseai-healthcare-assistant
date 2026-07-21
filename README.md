@@ -5,7 +5,10 @@
 Built for the **Next-Gen AI Hackathon 2026**.
 
 ---
+## 🌐 Live Demo
 
+🔗 **Prototype:** https://pulseai-healthcare-assistant.lovable.app/
+----
 # 🌍 Overview
 
 Doctors in small clinics and hospitals often manage dozens of patients simultaneously. Keeping track of every patient's medical history, vitals, medications, reports, and timelines can become stressful and time-consuming.
