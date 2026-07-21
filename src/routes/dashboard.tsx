@@ -772,6 +772,15 @@ function AIAssistantSection({
     }
   };
 
+  sendRef.current = send;
+  useEffect(() => {
+    registerSend?.((text: string) => {
+      sendRef.current?.(text);
+    });
+  }, [registerSend]);
+
+
+
   return (
     <Section id="ai-assistant">
       <SectionHeader
