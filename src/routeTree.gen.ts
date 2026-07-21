@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RadiologyRouteImport } from './routes/radiology'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CopilotRouteImport } from './routes/copilot'
 import { Route as IndexRouteImport } from './routes/index'
 
 const RadiologyRoute = RadiologyRouteImport.update({
   id: '/radiology',
   path: '/radiology',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CopilotRoute = CopilotRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/copilot': typeof CopilotRoute
+  '/dashboard': typeof DashboardRoute
   '/radiology': typeof RadiologyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/copilot': typeof CopilotRoute
+  '/dashboard': typeof DashboardRoute
   '/radiology': typeof RadiologyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/copilot': typeof CopilotRoute
+  '/dashboard': typeof DashboardRoute
   '/radiology': typeof RadiologyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/copilot' | '/radiology'
+  fullPaths: '/' | '/copilot' | '/dashboard' | '/radiology'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/copilot' | '/radiology'
-  id: '__root__' | '/' | '/copilot' | '/radiology'
+  to: '/' | '/copilot' | '/dashboard' | '/radiology'
+  id: '__root__' | '/' | '/copilot' | '/dashboard' | '/radiology'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CopilotRoute: typeof CopilotRoute
+  DashboardRoute: typeof DashboardRoute
   RadiologyRoute: typeof RadiologyRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/radiology'
       fullPath: '/radiology'
       preLoaderRoute: typeof RadiologyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/copilot': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CopilotRoute: CopilotRoute,
+  DashboardRoute: DashboardRoute,
   RadiologyRoute: RadiologyRoute,
 }
 export const routeTree = rootRouteImport
