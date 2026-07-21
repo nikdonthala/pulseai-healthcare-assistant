@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -8,21 +9,30 @@ import {
   Droplet,
   FileText,
   HeartPulse,
+  Loader2,
   Mic,
   MicOff,
   ScanLine,
   Search,
+  Send,
   Settings as SettingsIcon,
   Stethoscope,
   Thermometer,
+  Upload,
   Users,
 } from "lucide-react";
 import { scrollToSection, useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useVoiceNav, type VoiceCommand } from "@/hooks/use-voice-nav";
+import { useLiveVitals, useStreamSeries } from "@/hooks/use-live-vitals";
+import { EcgCanvas, StreamLine } from "@/components/EcgCanvas";
+import { SearchPalette, type SearchItem } from "@/components/SearchPalette";
+import { chatCopilot, summarizeRadiology } from "@/lib/ai.functions";
+import { Markdown } from "@/lib/markdown";
 
 const HeartScene = lazy(() =>
   import("@/components/HeartScene").then((m) => ({ default: m.HeartScene })),
 );
+
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -60,6 +70,7 @@ const SECTIONS = [
 function Overview() {
   const ids = useMemo(() => SECTIONS.map((s) => s.id), []);
   const active = useScrollSpy(ids);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   const commands: VoiceCommand[] = useMemo(
     () => [
@@ -72,6 +83,25 @@ function Overview() {
   const { listening, transcript, supported, start, stop } = useVoiceNav(
     commands,
     (target) => scrollToSection(target),
+  );
+
+  const searchItems: SearchItem[] = useMemo(
+    () => [
+      ...SECTIONS.map((s) => ({ id: s.id, label: s.label, section: "Navigation", keywords: s.phrases.join(" ") })),
+      { id: "patients", label: "Amelia Hart · P-1042 · ICU-04", section: "Patients", keywords: "amelia hart post-op cardiac" },
+      { id: "patients", label: "James O'Neill · P-1043 · ICU-12", section: "Patients", keywords: "james oneill sepsis" },
+      { id: "patients", label: "Priya Shah · P-1044 · ICU-03", section: "Patients", keywords: "priya shah pneumonia" },
+      { id: "patients", label: "Marcus Lee · P-1045 · ICU-09", section: "Patients", keywords: "marcus lee arrhythmia" },
+      { id: "patients", label: "Sofia García · P-1046 · ICU-05", section: "Patients", keywords: "sofia garcia post-partum" },
+      { id: "patients", label: "Henrik Bakke · P-1047 · ICU-11", section: "Patients", keywords: "henrik bakke copd" },
+      { id: "reports", label: "Ward 3B daily vitals summary", section: "Reports" },
+      { id: "reports", label: "Sepsis risk cohort — weekly", section: "Reports" },
+      { id: "alerts", label: "Rising sepsis risk — James O'Neill", section: "Alerts" },
+      { id: "ai-assistant", label: "Ask PulseAI about a patient", section: "AI" },
+      { id: "ehr", label: "EHR Co-pilot", section: "AI" },
+      { id: "radiology", label: "Radiology summarizer", section: "AI" },
+    ],
+    [],
   );
 
   // Deep-link on load
@@ -98,6 +128,12 @@ function Overview() {
         }}
       />
 
+      <SearchPalette
+        items={searchItems}
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+        onSelect={(it) => scrollToSection(it.id)}
+      />
 
       <div className="flex">
         {/* Sidebar */}
@@ -169,6 +205,7 @@ function Overview() {
             supported={supported}
             transcript={transcript}
             onMic={() => (listening ? stop() : start())}
+            onOpenSearch={() => setPaletteOpen(true)}
           />
 
           <div className="mx-auto max-w-6xl px-5 pb-32 pt-6 sm:px-8">
@@ -193,6 +230,7 @@ function Overview() {
   );
 }
 
+
 /* ---------------- shared bits ---------------- */
 
 function TopBar({
@@ -200,11 +238,13 @@ function TopBar({
   supported,
   transcript,
   onMic,
+  onOpenSearch,
 }: {
   listening: boolean;
   supported: boolean;
   transcript: string;
   onMic: () => void;
+  onOpenSearch: () => void;
 }) {
   const [time, setTime] = useState(() => new Date());
   useEffect(() => {
@@ -215,11 +255,16 @@ function TopBar({
   return (
     <div className="sticky top-0 z-30 border-b border-white/60 bg-white/50 backdrop-blur-2xl">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-3 sm:px-8">
-        <div className="flex flex-1 items-center gap-2 rounded-full border border-white/70 bg-white/60 px-4 py-2 text-sm text-neutral-500 shadow-[0_6px_20px_-14px_rgba(0,0,0,0.15)]">
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="flex flex-1 items-center gap-2 rounded-full border border-white/70 bg-white/60 px-4 py-2 text-left text-sm text-neutral-500 shadow-[0_6px_20px_-14px_rgba(0,0,0,0.15)] transition hover:bg-white/80"
+        >
           <Search className="h-4 w-4" />
           <span>Search patients, vitals, pages…</span>
           <kbd className="ml-auto rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">⌘K</kbd>
-        </div>
+        </button>
+
         <button
           onClick={onMic}
           disabled={!supported}
@@ -315,12 +360,26 @@ function Section({
 /* ---------------- sections ---------------- */
 
 function DashboardSection() {
-  const vitals = [
-    { label: "Heart rate", value: "72", unit: "bpm", color: "#F06D6D", Icon: HeartPulse },
-    { label: "SpO₂", value: "98.7", unit: "%", color: "#A88BEF", Icon: Droplet },
-    { label: "Blood pressure", value: "120/78", unit: "mmHg", color: "#F5A15A", Icon: Activity },
-    { label: "Temperature", value: "36.8", unit: "°C", color: "#F49A9A", Icon: Thermometer },
+  const v = useLiveVitals(1200);
+  const hrSeries = useStreamSeries(() => v.hr, 40, 1000);
+  const spo2Series = useStreamSeries(() => v.spo2, 40, 1200);
+  const bpSeries = useStreamSeries(() => v.sys, 40, 1500);
+  const tempSeries = useStreamSeries(() => v.temp, 40, 1400);
+
+  const cards = [
+    { label: "Heart rate", value: v.hr.toString(), unit: "bpm", color: "#F06D6D", Icon: HeartPulse, series: hrSeries },
+    { label: "SpO₂", value: v.spo2.toFixed(1), unit: "%", color: "#A88BEF", Icon: Droplet, series: spo2Series },
+    { label: "Blood pressure", value: `${v.sys}/${v.dia}`, unit: "mmHg", color: "#F5A15A", Icon: Activity, series: bpSeries },
+    { label: "Temperature", value: v.temp.toFixed(1), unit: "°C", color: "#F49A9A", Icon: Thermometer, series: tempSeries },
   ];
+
+  const healthScore = Math.round(
+    100 -
+      Math.abs(v.hr - 72) * 0.4 -
+      Math.max(0, 98 - v.spo2) * 4 -
+      Math.abs(v.temp - 36.9) * 6,
+  );
+
   return (
     <Section id="dashboard" className="pt-4">
       <SectionHeader
@@ -330,27 +389,26 @@ function DashboardSection() {
       />
       <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
         <div className="grid grid-cols-2 gap-4">
-          {vitals.map((v) => (
-            <GlassCard key={v.label} className="!p-5">
+          {cards.map((c) => (
+            <GlassCard key={c.label} className="!p-5">
               <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-neutral-400">
-                <v.Icon className="h-3.5 w-3.5" style={{ color: v.color }} />
-                {v.label}
+                <c.Icon
+                  className="h-3.5 w-3.5"
+                  style={{
+                    color: c.color,
+                    animation: c.label === "Heart rate" ? `pulse ${60 / v.hr}s ease-in-out infinite` : undefined,
+                  }}
+                />
+                {c.label}
               </div>
               <div className="mt-2 flex items-end gap-1">
-                <div className="text-4xl font-normal text-neutral-900" style={{ fontFamily: "'Instrument Serif', serif" }}>
-                  {v.value}
+                <div className="text-4xl font-normal text-neutral-900 tabular-nums" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                  {c.value}
                 </div>
-                <div className="pb-1 text-sm text-neutral-500">{v.unit}</div>
+                <div className="pb-1 text-sm text-neutral-500">{c.unit}</div>
               </div>
-              <div className="mt-3 h-8 w-full overflow-hidden rounded-lg" style={{ background: `linear-gradient(90deg, ${v.color}22, transparent)` }}>
-                <svg viewBox="0 0 100 30" className="h-full w-full">
-                  <path
-                    d="M0 20 Q10 5 20 20 T40 20 T60 20 T80 20 T100 20"
-                    fill="none"
-                    stroke={v.color}
-                    strokeWidth="1.5"
-                  />
-                </svg>
+              <div className="mt-3 h-8 w-full overflow-hidden rounded-lg" style={{ background: `linear-gradient(90deg, ${c.color}22, transparent)` }}>
+                <StreamLine data={c.series} color={c.color} height={32} />
               </div>
             </GlassCard>
           ))}
@@ -359,17 +417,17 @@ function DashboardSection() {
               <div>
                 <div className="text-xs uppercase tracking-widest text-neutral-400">Health score</div>
                 <div className="mt-1 flex items-end gap-2">
-                  <div className="text-5xl font-normal text-neutral-900" style={{ fontFamily: "'Instrument Serif', serif" }}>
-                    92
+                  <div className="text-5xl font-normal text-neutral-900 tabular-nums" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                    {healthScore}
                   </div>
                   <div className="pb-2 text-sm text-neutral-500">/ 100</div>
                 </div>
-                <div className="mt-1 text-xs text-neutral-500">Trending stable over 6h</div>
+                <div className="mt-1 text-xs text-neutral-500">Live · updated every 1.2s</div>
               </div>
               <div
-                className="relative h-24 w-24 rounded-full"
+                className="relative h-24 w-24 rounded-full transition-all"
                 style={{
-                  background: `conic-gradient(#B89AF6 0 92%, rgba(0,0,0,0.06) 92% 100%)`,
+                  background: `conic-gradient(#B89AF6 0 ${healthScore}%, rgba(0,0,0,0.06) ${healthScore}% 100%)`,
                 }}
               >
                 <div className="absolute inset-2 rounded-full bg-white/80 backdrop-blur" />
@@ -387,7 +445,7 @@ function DashboardSection() {
               </div>
               <div className="mt-1 text-xs text-neutral-500">Drag to rotate — a live 3D pulse.</div>
             </div>
-            <div className="rounded-full bg-emerald-50/80 px-3 py-1 text-xs text-emerald-700">72 BPM</div>
+            <div className="rounded-full bg-emerald-50/80 px-3 py-1 text-xs text-emerald-700 tabular-nums">{v.hr} BPM</div>
           </div>
           <div className="relative h-[280px] overflow-hidden rounded-2xl border border-white/60 bg-gradient-to-br from-white/60 to-white/20">
             <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-neutral-400">Loading…</div>}>
@@ -411,11 +469,11 @@ function DashboardSection() {
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#F06D6D]" /> Recording
             </div>
           </div>
-          <EcgLine />
-          <div className="mt-3 flex gap-4 text-xs text-neutral-500">
-            <span>72 BPM</span>
-            <span>Signal excellent</span>
-            <span>Noise 0.02 mV</span>
+          <EcgCanvas bpm={v.hr} height={132} />
+          <div className="mt-3 flex gap-4 text-xs text-neutral-500 tabular-nums">
+            <span>{v.hr} BPM</span>
+            <span>HRV {v.hrv} ms</span>
+            <span>Resp {v.resp}/min</span>
           </div>
         </GlassCard>
 
@@ -432,19 +490,19 @@ function DashboardSection() {
           </p>
           <div className="mt-4 space-y-3 text-sm">
             {[
-              ["Cardiovascular", "Low", 22, "#A88BEF"],
-              ["Fatigue", "Moderate", 62, "#F5A15A"],
-              ["Hydration", "Low", 28, "#A88BEF"],
-            ].map(([k, v, pct, c]) => (
+              ["Cardiovascular", v.stress < 40 ? "Low" : "Moderate", Math.min(90, v.stress + 10), "#A88BEF"],
+              ["Fatigue", v.recovery > 75 ? "Low" : "Moderate", 100 - v.recovery, "#F5A15A"],
+              ["Hydration", "Low", Math.round(30 + (v.hr - 72)), "#A88BEF"],
+            ].map(([k, val, pct, c]) => (
               <div key={k as string}>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-neutral-700">{k}</span>
-                  <span className="text-neutral-500">{v}</span>
+                  <span className="text-neutral-500">{val}</span>
                 </div>
                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200/60">
                   <div
-                    className="h-full rounded-full"
-                    style={{ width: `${pct as number}%`, background: c as string }}
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.max(6, Math.min(100, pct as number))}%`, background: c as string }}
                   />
                 </div>
               </div>
@@ -462,38 +520,29 @@ function DashboardSection() {
   );
 }
 
-function EcgLine() {
+function LiveBedCard({ id, seed }: { id: string; seed: number }) {
+  const v = useLiveVitals(1500 + seed * 120);
+  const risk = v.spo2 < 96 ? "High" : v.hr > 78 ? "Moderate" : "Low";
+  const riskColor = risk === "High" ? "#F06D6D" : risk === "Moderate" ? "#F5A15A" : "#A88BEF";
   return (
-    <div className="relative h-32 w-full overflow-hidden rounded-2xl border border-white/60 bg-white/40">
-      <svg viewBox="0 0 800 120" className="h-full w-full" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="ecgG" x1="0" x2="1">
-            <stop offset="0%" stopColor="#F06D6D" stopOpacity="0" />
-            <stop offset="50%" stopColor="#F06D6D" />
-            <stop offset="100%" stopColor="#B89AF6" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M0 60 L60 60 L80 60 L90 30 L100 90 L110 60 L200 60 L220 60 L230 30 L240 90 L250 60 L340 60 L360 60 L370 30 L380 90 L390 60 L480 60 L500 60 L510 30 L520 90 L530 60 L620 60 L640 60 L650 30 L660 90 L670 60 L760 60 L800 60"
-          fill="none"
-          stroke="url(#ecgG)"
-          strokeWidth="2"
-          className="animate-ecg"
-          style={{ strokeDasharray: 2000 }}
-        />
-      </svg>
-    </div>
+    <GlassCard className="!p-5">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-medium text-neutral-800">{id}</div>
+        <span className="rounded-full px-2 py-0.5 text-[11px] text-white" style={{ background: riskColor }}>
+          {risk}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <MiniStat label="HR" value={v.hr} color="#F06D6D" />
+        <MiniStat label="SpO₂" value={`${v.spo2.toFixed(0)}%`} color="#A88BEF" />
+        <MiniStat label="BP" value={`${v.sys}/${v.dia}`} color="#F5A15A" />
+      </div>
+    </GlassCard>
   );
 }
 
 function LiveMonitoringSection() {
-  const beds = Array.from({ length: 8 }, (_, i) => ({
-    id: `ICU-${(i + 1).toString().padStart(2, "0")}`,
-    hr: 71 + ((i * 3) % 20),
-    spo2: 95 + (i % 4),
-    bp: `${118 + i}/${72 + (i % 8)}`,
-    risk: ["Low", "Low", "Moderate", "Low", "High", "Low", "Moderate", "Low"][i],
-  }));
+  const beds = Array.from({ length: 8 }, (_, i) => `ICU-${(i + 1).toString().padStart(2, "0")}`);
   return (
     <Section id="live-monitoring">
       <SectionHeader
@@ -502,32 +551,14 @@ function LiveMonitoringSection() {
         sub="Vitals refresh in real time across the ward."
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {beds.map((b) => {
-          const riskColor =
-            b.risk === "High" ? "#F06D6D" : b.risk === "Moderate" ? "#F5A15A" : "#A88BEF";
-          return (
-            <GlassCard key={b.id} className="!p-5">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium text-neutral-800">{b.id}</div>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[11px] text-white"
-                  style={{ background: riskColor }}
-                >
-                  {b.risk}
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <MiniStat label="HR" value={b.hr} color="#F06D6D" />
-                <MiniStat label="SpO₂" value={`${b.spo2}%`} color="#A88BEF" />
-                <MiniStat label="BP" value={b.bp} color="#F5A15A" />
-              </div>
-            </GlassCard>
-          );
-        })}
+        {beds.map((id, i) => (
+          <LiveBedCard key={id} id={id} seed={i} />
+        ))}
       </div>
     </Section>
   );
 }
+
 
 function MiniStat({ label, value, color }: { label: string; value: React.ReactNode; color: string }) {
   return (
@@ -595,6 +626,35 @@ function PatientsSection() {
 }
 
 function AIAssistantSection() {
+  const runChat = useServerFn(chatCopilot);
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
+
+  const send = async (text?: string) => {
+    const q = (text ?? input).trim();
+    if (!q || loading) return;
+    setErr(null);
+    const next = [...messages, { role: "user" as const, content: q }];
+    setMessages(next);
+    setInput("");
+    setLoading(true);
+    try {
+      const res = await runChat({ data: { messages: next } });
+      setMessages([...next, { role: "assistant", content: res.content }]);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Section id="ai-assistant">
       <SectionHeader
@@ -603,34 +663,121 @@ function AIAssistantSection() {
         sub="Server-side AI companion. Ask about vitals, sepsis risk, or medication interactions."
       />
       <GlassCard>
-        <div className="rounded-2xl bg-gradient-to-br from-[#F7B58C]/20 via-[#E9C5E9]/30 to-[#B89AF6]/20 p-5 text-sm text-neutral-700">
-          <div className="text-xs uppercase tracking-widest text-neutral-500">PulseAI · Live insight</div>
-          <p className="mt-2">
-            Amelia's vitals are within normal range. Fatigue index is trending up — consider a short
-            rest period and hydration prompt before her afternoon session.
-          </p>
-        </div>
-        <div className="mt-4 flex gap-2">
+        {messages.length === 0 && (
+          <div className="rounded-2xl bg-gradient-to-br from-[#F7B58C]/20 via-[#E9C5E9]/30 to-[#B89AF6]/20 p-5 text-sm text-neutral-700">
+            <div className="text-xs uppercase tracking-widest text-neutral-500">PulseAI · Live insight</div>
+            <p className="mt-2">
+              Amelia's vitals are within normal range. Fatigue index is trending up — consider a short
+              rest period and hydration prompt before her afternoon session.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                "Summarize sepsis red flags to watch tonight.",
+                "Metformin + contrast — safe for tomorrow's CT?",
+                "Interpret HR 92, SpO₂ 94%, temp 38.1°C, WBC 14.2.",
+              ].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => send(s)}
+                  className="rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-xs text-neutral-700 hover:bg-white"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.length > 0 && (
+          <div ref={listRef} className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+            {messages.map((m, i) => (
+              <div
+                key={i}
+                className={`rounded-2xl px-4 py-3 text-sm ${
+                  m.role === "user"
+                    ? "ml-auto max-w-[85%] bg-gradient-to-br from-[#F7B58C]/40 to-[#B89AF6]/40 text-neutral-800"
+                    : "mr-auto max-w-[92%] border border-white/70 bg-white/70 text-neutral-700"
+                }`}
+              >
+                {m.role === "assistant" ? <Markdown content={m.content} /> : <p className="whitespace-pre-wrap">{m.content}</p>}
+              </div>
+            ))}
+            {loading && (
+              <div className="mr-auto flex max-w-[85%] items-center gap-2 rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-xs text-neutral-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#B89AF6]" /> PulseAI is thinking…
+              </div>
+            )}
+          </div>
+        )}
+
+        {err && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2 text-xs text-red-700">
+            {err}
+          </div>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+          className="mt-4 flex gap-2"
+        >
           <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about a patient…"
             className="flex-1 rounded-full border border-white/70 bg-white/70 px-4 py-2.5 text-sm outline-none placeholder:text-neutral-400 focus:border-[#B89AF6]"
           />
           <button
-            className="rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)]"
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)] transition disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
           >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Ask
           </button>
-        </div>
-        <p className="mt-3 text-xs text-neutral-400">
-          Streaming Groq integration ships next — the server key will be added to this workspace.
-        </p>
+        </form>
       </GlassCard>
     </Section>
   );
 }
 
+const EHR_SAMPLE =
+  "62F, post-op day 3 (CABG). HR 92, BP 108/62, SpO₂ 94% on 2L NC, temp 38.1°C, RR 22. WBC 14.2, CRP 96, lactate 2.4, creatinine 1.1. On ceftriaxone 1g IV, metoprolol 25mg BD, atorvastatin 40 mg. PMH: T2DM, HTN. Complaint: new drowsiness, mild wound erythema.";
+
 function EHRSection() {
+  const runChat = useServerFn(chatCopilot);
+  const [ehrText, setEhrText] = useState("");
+  const [plan, setPlan] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const generate = async () => {
+    if (!ehrText.trim() || loading) return;
+    setLoading(true);
+    setErr(null);
+    setPlan("");
+    try {
+      const res = await runChat({
+        data: {
+          messages: [
+            {
+              role: "user",
+              content: `Analyze this patient snapshot and produce your structured plan.\n\n${ehrText}`,
+            },
+          ],
+        },
+      });
+      setPlan(res.content);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Section id="ehr">
       <SectionHeader
@@ -642,26 +789,51 @@ function EHRSection() {
         <GlassCard>
           <div className="text-xs uppercase tracking-widest text-neutral-400">Patient EHR</div>
           <textarea
+            value={ehrText}
+            onChange={(e) => setEhrText(e.target.value)}
             rows={9}
             placeholder="62F, post-op day 3, HR 92, SpO2 94%, temp 38.1°C, WBC 14.2, on ceftriaxone…"
             className="mt-3 w-full resize-none rounded-2xl border border-white/70 bg-white/70 p-4 text-sm outline-none focus:border-[#B89AF6]"
           />
           <div className="mt-3 flex gap-2">
-            <button className="rounded-full border border-white/70 bg-white/70 px-4 py-2 text-sm text-neutral-600">Reset sample</button>
             <button
-              className="rounded-full px-5 py-2 text-sm font-medium text-white"
+              type="button"
+              onClick={() => setEhrText(EHR_SAMPLE)}
+              className="rounded-full border border-white/70 bg-white/70 px-4 py-2 text-sm text-neutral-600 hover:bg-white"
+            >
+              Load sample
+            </button>
+            <button
+              type="button"
+              onClick={generate}
+              disabled={loading || !ehrText.trim()}
+              className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)] disabled:opacity-40"
               style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
             >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Generate plan
             </button>
           </div>
+          {err && <div className="mt-3 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2 text-xs text-red-700">{err}</div>}
         </GlassCard>
         <GlassCard>
           <div className="text-xs uppercase tracking-widest text-neutral-400">AI clinical plan</div>
-          <p className="mt-3 text-sm text-neutral-500">
-            Your evidence-based plan will appear here — assessment, red flags, workup, treatment
-            with guideline citations, and monitoring.
-          </p>
+          {!plan && !loading && (
+            <p className="mt-3 text-sm text-neutral-500">
+              Your evidence-based plan will appear here — assessment, red flags, workup, treatment
+              with guideline citations, and monitoring.
+            </p>
+          )}
+          {loading && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-neutral-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#B89AF6]" /> Reasoning through the chart…
+            </div>
+          )}
+          {plan && (
+            <div className="mt-3 max-h-[520px] overflow-y-auto pr-2 text-sm text-neutral-700">
+              <Markdown content={plan} />
+            </div>
+          )}
         </GlassCard>
       </div>
     </Section>
@@ -669,37 +841,127 @@ function EHRSection() {
 }
 
 function RadiologySection() {
+  const runRad = useServerFn(summarizeRadiology);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [context, setContext] = useState("");
+  const [modality, setModality] = useState("X-Ray");
+  const [result, setResult] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const onFile = (f: File | null) => {
+    setResult("");
+    setErr(null);
+    setFile(f);
+    if (!f) return setPreview(null);
+    const reader = new FileReader();
+    reader.onload = () => setPreview(reader.result as string);
+    reader.readAsDataURL(f);
+  };
+
+  const analyze = async () => {
+    if (!preview || loading) return;
+    setLoading(true);
+    setErr(null);
+    setResult("");
+    try {
+      const res = await runRad({
+        data: { imageDataUrl: preview, modality, clinical_context: context },
+      });
+      setResult(res.content);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Section id="radiology">
       <SectionHeader
         eyebrow="06 — Radiology"
         title="From dense report to plain language."
-        sub="Upload or paste an unstructured radiology report. PulseAI extracts key findings and generates a patient-friendly summary alongside the clinician view."
+        sub="Upload an X-ray, CT, MRI or ultrasound. PulseAI extracts key findings and generates a patient-friendly summary alongside the clinician view."
       />
       <div className="grid gap-5 lg:grid-cols-2">
         <GlassCard>
-          <div className="text-xs uppercase tracking-widest text-neutral-400">Radiology report</div>
-          <div className="mt-3 flex aspect-[4/3] items-center justify-center rounded-2xl border border-dashed border-white/70 bg-white/40 text-sm text-neutral-400">
-            Attach image or report
+          <div className="flex items-center justify-between">
+            <div className="text-xs uppercase tracking-widest text-neutral-400">Radiology report</div>
+            <select
+              value={modality}
+              onChange={(e) => setModality(e.target.value)}
+              className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs text-neutral-600 outline-none"
+            >
+              {["X-Ray", "CT", "MRI", "Ultrasound", "Other"].map((m) => (
+                <option key={m}>{m}</option>
+              ))}
+            </select>
           </div>
+          <label
+            htmlFor="rad-file"
+            className="mt-3 flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-white/70 bg-white/40 text-sm text-neutral-400 hover:bg-white/60"
+          >
+            {preview ? (
+              <img src={preview} alt="scan" className="h-full w-full object-contain" />
+            ) : (
+              <div className="flex flex-col items-center gap-2 p-6 text-center">
+                <Upload className="h-5 w-5 text-[#B89AF6]" />
+                Click to upload PNG / JPG
+                <span className="text-[11px] text-neutral-400">X-Ray · CT · MRI · Ultrasound</span>
+              </div>
+            )}
+            <input
+              id="rad-file"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <textarea
+            value={context}
+            onChange={(e) => setContext(e.target.value)}
+            rows={2}
+            placeholder="Clinical context (optional) — e.g. 45F, cough & fever x 5d, r/o pneumonia"
+            className="mt-3 w-full resize-none rounded-2xl border border-white/70 bg-white/70 p-3 text-sm outline-none focus:border-[#B89AF6]"
+          />
           <button
-            className="mt-3 w-full rounded-full py-2.5 text-sm font-medium text-white"
+            type="button"
+            onClick={analyze}
+            disabled={!file || loading}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)] disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
           >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
             Summarize
           </button>
+          {err && <div className="mt-3 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2 text-xs text-red-700">{err}</div>}
         </GlassCard>
         <GlassCard>
           <div className="text-xs uppercase tracking-widest text-neutral-400">Dual-view summary</div>
-          <p className="mt-3 text-sm text-neutral-500">
-            Clinician bullets on top, plain-English patient summary below — with recommended next
-            steps.
-          </p>
+          {!result && !loading && (
+            <p className="mt-3 text-sm text-neutral-500">
+              Clinician bullets on top, plain-English patient summary below — with recommended next
+              steps.
+            </p>
+          )}
+          {loading && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-neutral-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#B89AF6]" /> Reading the image…
+            </div>
+          )}
+          {result && (
+            <div className="mt-3 max-h-[560px] overflow-y-auto pr-2 text-sm text-neutral-700">
+              <Markdown content={result} />
+            </div>
+          )}
         </GlassCard>
       </div>
     </Section>
   );
 }
+
 
 function AlertsSection() {
   const alerts = [

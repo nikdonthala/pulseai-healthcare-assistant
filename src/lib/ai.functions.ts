@@ -54,7 +54,7 @@ export const chatCopilot = createServerFn({ method: "POST" })
       : "";
 
     const res = await callGatewayChat({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-3.5-flash",
       messages: [
         { role: "system", content: COPILOT_SYSTEM + ehrBlock },
         ...data.messages,
@@ -104,7 +104,7 @@ export const summarizeRadiology = createServerFn({ method: "POST" })
       .join("\n");
 
     const res = await callGatewayChat({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-3.5-flash",
       messages: [
         { role: "system", content: RAD_SYSTEM },
         {
