@@ -23,7 +23,7 @@ const HeartScene = lazy(() =>
   import("@/components/HeartScene").then((m) => ({ default: m.HeartScene })),
 );
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "PulseAI — Intelligent Critical Care, Reimagined" },
