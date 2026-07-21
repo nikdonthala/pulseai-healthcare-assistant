@@ -360,12 +360,26 @@ function Section({
 /* ---------------- sections ---------------- */
 
 function DashboardSection() {
-  const vitals = [
-    { label: "Heart rate", value: "72", unit: "bpm", color: "#F06D6D", Icon: HeartPulse },
-    { label: "SpO₂", value: "98.7", unit: "%", color: "#A88BEF", Icon: Droplet },
-    { label: "Blood pressure", value: "120/78", unit: "mmHg", color: "#F5A15A", Icon: Activity },
-    { label: "Temperature", value: "36.8", unit: "°C", color: "#F49A9A", Icon: Thermometer },
+  const v = useLiveVitals(1200);
+  const hrSeries = useStreamSeries(() => v.hr, 40, 1000);
+  const spo2Series = useStreamSeries(() => v.spo2, 40, 1200);
+  const bpSeries = useStreamSeries(() => v.sys, 40, 1500);
+  const tempSeries = useStreamSeries(() => v.temp, 40, 1400);
+
+  const cards = [
+    { label: "Heart rate", value: v.hr.toString(), unit: "bpm", color: "#F06D6D", Icon: HeartPulse, series: hrSeries },
+    { label: "SpO₂", value: v.spo2.toFixed(1), unit: "%", color: "#A88BEF", Icon: Droplet, series: spo2Series },
+    { label: "Blood pressure", value: `${v.sys}/${v.dia}`, unit: "mmHg", color: "#F5A15A", Icon: Activity, series: bpSeries },
+    { label: "Temperature", value: v.temp.toFixed(1), unit: "°C", color: "#F49A9A", Icon: Thermometer, series: tempSeries },
   ];
+
+  const healthScore = Math.round(
+    100 -
+      Math.abs(v.hr - 72) * 0.4 -
+      Math.max(0, 98 - v.spo2) * 4 -
+      Math.abs(v.temp - 36.9) * 6,
+  );
+
   return (
     <Section id="dashboard" className="pt-4">
       <SectionHeader
@@ -375,27 +389,26 @@ function DashboardSection() {
       />
       <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
         <div className="grid grid-cols-2 gap-4">
-          {vitals.map((v) => (
-            <GlassCard key={v.label} className="!p-5">
+          {cards.map((c) => (
+            <GlassCard key={c.label} className="!p-5">
               <div className="flex items-center gap-2 text-xs uppercase tracking-widest text-neutral-400">
-                <v.Icon className="h-3.5 w-3.5" style={{ color: v.color }} />
-                {v.label}
+                <c.Icon
+                  className="h-3.5 w-3.5"
+                  style={{
+                    color: c.color,
+                    animation: c.label === "Heart rate" ? `pulse ${60 / v.hr}s ease-in-out infinite` : undefined,
+                  }}
+                />
+                {c.label}
               </div>
               <div className="mt-2 flex items-end gap-1">
-                <div className="text-4xl font-normal text-neutral-900" style={{ fontFamily: "'Instrument Serif', serif" }}>
-                  {v.value}
+                <div className="text-4xl font-normal text-neutral-900 tabular-nums" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                  {c.value}
                 </div>
-                <div className="pb-1 text-sm text-neutral-500">{v.unit}</div>
+                <div className="pb-1 text-sm text-neutral-500">{c.unit}</div>
               </div>
-              <div className="mt-3 h-8 w-full overflow-hidden rounded-lg" style={{ background: `linear-gradient(90deg, ${v.color}22, transparent)` }}>
-                <svg viewBox="0 0 100 30" className="h-full w-full">
-                  <path
-                    d="M0 20 Q10 5 20 20 T40 20 T60 20 T80 20 T100 20"
-                    fill="none"
-                    stroke={v.color}
-                    strokeWidth="1.5"
-                  />
-                </svg>
+              <div className="mt-3 h-8 w-full overflow-hidden rounded-lg" style={{ background: `linear-gradient(90deg, ${c.color}22, transparent)` }}>
+                <StreamLine data={c.series} color={c.color} height={32} />
               </div>
             </GlassCard>
           ))}
@@ -404,17 +417,17 @@ function DashboardSection() {
               <div>
                 <div className="text-xs uppercase tracking-widest text-neutral-400">Health score</div>
                 <div className="mt-1 flex items-end gap-2">
-                  <div className="text-5xl font-normal text-neutral-900" style={{ fontFamily: "'Instrument Serif', serif" }}>
-                    92
+                  <div className="text-5xl font-normal text-neutral-900 tabular-nums" style={{ fontFamily: "'Instrument Serif', serif" }}>
+                    {healthScore}
                   </div>
                   <div className="pb-2 text-sm text-neutral-500">/ 100</div>
                 </div>
-                <div className="mt-1 text-xs text-neutral-500">Trending stable over 6h</div>
+                <div className="mt-1 text-xs text-neutral-500">Live · updated every 1.2s</div>
               </div>
               <div
-                className="relative h-24 w-24 rounded-full"
+                className="relative h-24 w-24 rounded-full transition-all"
                 style={{
-                  background: `conic-gradient(#B89AF6 0 92%, rgba(0,0,0,0.06) 92% 100%)`,
+                  background: `conic-gradient(#B89AF6 0 ${healthScore}%, rgba(0,0,0,0.06) ${healthScore}% 100%)`,
                 }}
               >
                 <div className="absolute inset-2 rounded-full bg-white/80 backdrop-blur" />
@@ -432,7 +445,7 @@ function DashboardSection() {
               </div>
               <div className="mt-1 text-xs text-neutral-500">Drag to rotate — a live 3D pulse.</div>
             </div>
-            <div className="rounded-full bg-emerald-50/80 px-3 py-1 text-xs text-emerald-700">72 BPM</div>
+            <div className="rounded-full bg-emerald-50/80 px-3 py-1 text-xs text-emerald-700 tabular-nums">{v.hr} BPM</div>
           </div>
           <div className="relative h-[280px] overflow-hidden rounded-2xl border border-white/60 bg-gradient-to-br from-white/60 to-white/20">
             <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-neutral-400">Loading…</div>}>
@@ -456,11 +469,11 @@ function DashboardSection() {
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#F06D6D]" /> Recording
             </div>
           </div>
-          <EcgLine />
-          <div className="mt-3 flex gap-4 text-xs text-neutral-500">
-            <span>72 BPM</span>
-            <span>Signal excellent</span>
-            <span>Noise 0.02 mV</span>
+          <EcgCanvas bpm={v.hr} height={132} />
+          <div className="mt-3 flex gap-4 text-xs text-neutral-500 tabular-nums">
+            <span>{v.hr} BPM</span>
+            <span>HRV {v.hrv} ms</span>
+            <span>Resp {v.resp}/min</span>
           </div>
         </GlassCard>
 
@@ -477,19 +490,19 @@ function DashboardSection() {
           </p>
           <div className="mt-4 space-y-3 text-sm">
             {[
-              ["Cardiovascular", "Low", 22, "#A88BEF"],
-              ["Fatigue", "Moderate", 62, "#F5A15A"],
-              ["Hydration", "Low", 28, "#A88BEF"],
-            ].map(([k, v, pct, c]) => (
+              ["Cardiovascular", v.stress < 40 ? "Low" : "Moderate", Math.min(90, v.stress + 10), "#A88BEF"],
+              ["Fatigue", v.recovery > 75 ? "Low" : "Moderate", 100 - v.recovery, "#F5A15A"],
+              ["Hydration", "Low", Math.round(30 + (v.hr - 72)), "#A88BEF"],
+            ].map(([k, val, pct, c]) => (
               <div key={k as string}>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-neutral-700">{k}</span>
-                  <span className="text-neutral-500">{v}</span>
+                  <span className="text-neutral-500">{val}</span>
                 </div>
                 <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-neutral-200/60">
                   <div
-                    className="h-full rounded-full"
-                    style={{ width: `${pct as number}%`, background: c as string }}
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.max(6, Math.min(100, pct as number))}%`, background: c as string }}
                   />
                 </div>
               </div>
@@ -507,38 +520,29 @@ function DashboardSection() {
   );
 }
 
-function EcgLine() {
+function LiveBedCard({ id, seed }: { id: string; seed: number }) {
+  const v = useLiveVitals(1500 + seed * 120);
+  const risk = v.spo2 < 96 ? "High" : v.hr > 78 ? "Moderate" : "Low";
+  const riskColor = risk === "High" ? "#F06D6D" : risk === "Moderate" ? "#F5A15A" : "#A88BEF";
   return (
-    <div className="relative h-32 w-full overflow-hidden rounded-2xl border border-white/60 bg-white/40">
-      <svg viewBox="0 0 800 120" className="h-full w-full" preserveAspectRatio="none">
-        <defs>
-          <linearGradient id="ecgG" x1="0" x2="1">
-            <stop offset="0%" stopColor="#F06D6D" stopOpacity="0" />
-            <stop offset="50%" stopColor="#F06D6D" />
-            <stop offset="100%" stopColor="#B89AF6" />
-          </linearGradient>
-        </defs>
-        <path
-          d="M0 60 L60 60 L80 60 L90 30 L100 90 L110 60 L200 60 L220 60 L230 30 L240 90 L250 60 L340 60 L360 60 L370 30 L380 90 L390 60 L480 60 L500 60 L510 30 L520 90 L530 60 L620 60 L640 60 L650 30 L660 90 L670 60 L760 60 L800 60"
-          fill="none"
-          stroke="url(#ecgG)"
-          strokeWidth="2"
-          className="animate-ecg"
-          style={{ strokeDasharray: 2000 }}
-        />
-      </svg>
-    </div>
+    <GlassCard className="!p-5">
+      <div className="flex items-center justify-between">
+        <div className="text-sm font-medium text-neutral-800">{id}</div>
+        <span className="rounded-full px-2 py-0.5 text-[11px] text-white" style={{ background: riskColor }}>
+          {risk}
+        </span>
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+        <MiniStat label="HR" value={v.hr} color="#F06D6D" />
+        <MiniStat label="SpO₂" value={`${v.spo2.toFixed(0)}%`} color="#A88BEF" />
+        <MiniStat label="BP" value={`${v.sys}/${v.dia}`} color="#F5A15A" />
+      </div>
+    </GlassCard>
   );
 }
 
 function LiveMonitoringSection() {
-  const beds = Array.from({ length: 8 }, (_, i) => ({
-    id: `ICU-${(i + 1).toString().padStart(2, "0")}`,
-    hr: 71 + ((i * 3) % 20),
-    spo2: 95 + (i % 4),
-    bp: `${118 + i}/${72 + (i % 8)}`,
-    risk: ["Low", "Low", "Moderate", "Low", "High", "Low", "Moderate", "Low"][i],
-  }));
+  const beds = Array.from({ length: 8 }, (_, i) => `ICU-${(i + 1).toString().padStart(2, "0")}`);
   return (
     <Section id="live-monitoring">
       <SectionHeader
@@ -547,32 +551,14 @@ function LiveMonitoringSection() {
         sub="Vitals refresh in real time across the ward."
       />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {beds.map((b) => {
-          const riskColor =
-            b.risk === "High" ? "#F06D6D" : b.risk === "Moderate" ? "#F5A15A" : "#A88BEF";
-          return (
-            <GlassCard key={b.id} className="!p-5">
-              <div className="flex items-center justify-between">
-                <div className="text-sm font-medium text-neutral-800">{b.id}</div>
-                <span
-                  className="rounded-full px-2 py-0.5 text-[11px] text-white"
-                  style={{ background: riskColor }}
-                >
-                  {b.risk}
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <MiniStat label="HR" value={b.hr} color="#F06D6D" />
-                <MiniStat label="SpO₂" value={`${b.spo2}%`} color="#A88BEF" />
-                <MiniStat label="BP" value={b.bp} color="#F5A15A" />
-              </div>
-            </GlassCard>
-          );
-        })}
+        {beds.map((id, i) => (
+          <LiveBedCard key={id} id={id} seed={i} />
+        ))}
       </div>
     </Section>
   );
 }
+
 
 function MiniStat({ label, value, color }: { label: string; value: React.ReactNode; color: string }) {
   return (
