@@ -684,10 +684,12 @@ function AIAssistantSection({
   lang,
   setLang,
   patient,
+  registerSend,
 }: {
   lang: string;
   setLang: (l: string) => void;
   patient: Patient;
+  registerSend?: (fn: (text: string) => void) => void;
 }) {
   type Msg = { role: "user" | "assistant"; content: string };
   const [messages, setMessages] = useState<Msg[]>([]);
