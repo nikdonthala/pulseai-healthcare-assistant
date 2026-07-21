@@ -154,7 +154,7 @@ function Overview() {
 
       <div className="flex">
         {/* Sidebar */}
-        <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col gap-2 border-r border-white/60 bg-white/40 p-5 backdrop-blur-2xl lg:flex">
+        <aside className="sticky top-0 hidden h-screen w-[260px] shrink-0 flex-col gap-2 border-r border-white/60 bg-white/70 p-5 backdrop-blur-md lg:flex">
           <a
             href="#dashboard"
             onClick={(e) => {
@@ -271,7 +271,7 @@ function TopBar({
   }, []);
 
   return (
-    <div className="sticky top-0 z-30 border-b border-white/60 bg-white/50 backdrop-blur-2xl">
+    <div className="sticky top-0 z-30 border-b border-white/60 bg-white/75 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-3 sm:px-8">
         <button
           type="button"
@@ -331,7 +331,7 @@ function GlassCard({
 }) {
   return (
     <div
-      className={`rounded-3xl border border-white/70 bg-white/55 p-6 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.12)] backdrop-blur-2xl ${className}`}
+      className={`rounded-3xl border border-white/70 bg-white/70 p-6 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.12)] ${className}`}
     >
       {children}
     </div>
