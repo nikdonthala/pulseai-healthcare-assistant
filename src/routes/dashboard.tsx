@@ -92,7 +92,7 @@ function Overview() {
   const bcp47 = LANGS.find((l) => l.code === lang)?.bcp47 ?? "en-US";
 
   const aiSendRef = useRef<((text: string) => void) | null>(null);
-  const searchOpenRef = useRef<((q?: string) => void) | null>(null);
+  
 
   const speak = (text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
