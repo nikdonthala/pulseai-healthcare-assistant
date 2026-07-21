@@ -91,25 +91,93 @@ function Overview() {
   const patient = getPatient(patientId);
   const bcp47 = LANGS.find((l) => l.code === lang)?.bcp47 ?? "en-US";
 
-  const commands: VoiceCommand[] = useMemo(
-    () => [
-      ...SECTIONS.map((s) => ({ target: s.id, phrases: [...s.phrases, `go to ${s.label.toLowerCase()}`, `open ${s.label.toLowerCase()}`] })),
-      { target: "dashboard", phrases: ["scroll to top", "top"] },
-    ],
-    [],
-  );
-
   const aiSendRef = useRef<((text: string) => void) | null>(null);
+  const searchOpenRef = useRef<((q?: string) => void) | null>(null);
+
+  const speak = (text: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = bcp47;
+      u.rate = 1.02;
+      u.pitch = 1.0;
+      window.speechSynthesis.speak(u);
+    } catch {}
+  };
+
+  const commands: VoiceCommand[] = useMemo(() => {
+    const langCmds = LANGS.filter((l) => l.code !== "en").map((l) => ({
+      target: `lang:${l.code}`,
+      phrases: [
+        `switch language to ${l.label.toLowerCase()}`,
+        `change language to ${l.label.toLowerCase()}`,
+        `set language to ${l.label.toLowerCase()}`,
+      ],
+    }));
+    const searchCmd: VoiceCommand = {
+      target: "search",
+      phrases: ["search "],
+      extract: (t, p) => t.slice(t.toLowerCase().indexOf(p) + p.length).trim(),
+    };
+    return [
+      ...SECTIONS.map((s) => ({
+        target: s.id,
+        phrases: [
+          ...s.phrases,
+          `go to ${s.label.toLowerCase()}`,
+          `open ${s.label.toLowerCase()}`,
+          `scroll to ${s.label.toLowerCase()}`,
+          `show ${s.label.toLowerCase()}`,
+        ],
+      })),
+      { target: "dashboard", phrases: ["scroll to top", "top", "home"] },
+      { target: "live-monitoring", phrases: ["show heart rate", "show blood pressure", "show oxygen", "show ecg", "show vitals"] },
+      { target: "reports", phrases: ["generate report", "generate doctor summary", "create report"] },
+      { target: "radiology", phrases: ["analyze ecg", "analyze report", "analyze scan"] },
+      { target: "settings", phrases: ["open profile", "profile"] },
+      searchCmd,
+      ...langCmds,
+    ];
+  }, []);
+
+  const speakFor = (target: string): string => {
+    if (target === "search") return "Opening search.";
+    if (target.startsWith("lang:")) {
+      const code = target.slice(5);
+      const lbl = LANGS.find((l) => l.code === code)?.label ?? code;
+      return `Switching language to ${lbl}.`;
+    }
+    const s = SECTIONS.find((x) => x.id === target);
+    return s ? `Opening ${s.label}.` : "Done.";
+  };
+
   const { listening, transcript, supported, start, stop } = useVoiceNav({
     commands,
-    onCommand: (target) => scrollToSection(target),
+    onCommand: (match) => {
+      const { target, payload } = match;
+      if (target === "search") {
+        setPaletteOpen(true);
+        setTimeout(() => searchOpenRef.current?.(payload), 60);
+        speak(payload ? `Searching ${payload}.` : "Opening search.");
+        return;
+      }
+      if (target.startsWith("lang:")) {
+        const code = target.slice(5);
+        setLang(code);
+        speak(speakFor(target));
+        return;
+      }
+      scrollToSection(target);
+      speak(speakFor(target));
+    },
     onQuestion: (text) => {
       scrollToSection("ai-assistant");
-      // Give the scroll a moment before sending so users see the message land.
       setTimeout(() => aiSendRef.current?.(text), 250);
     },
     lang: bcp47,
   });
+
 
   const searchItems: SearchItem[] = useMemo(
     () => [
