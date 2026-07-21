@@ -158,7 +158,7 @@ function Overview() {
       const { target, payload } = match;
       if (target === "search") {
         setPaletteOpen(true);
-        setTimeout(() => searchOpenRef.current?.(payload), 60);
+        
         speak(payload ? `Searching ${payload}.` : "Opening search.");
         return;
       }
