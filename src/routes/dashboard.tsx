@@ -645,33 +645,73 @@ function PatientsSection() {
   );
 }
 
-function AIAssistantSection() {
-  const runChat = useServerFn(chatCopilot);
-  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+function AIAssistantSection({
+  lang,
+  setLang,
+}: {
+  lang: string;
+  setLang: (l: string) => void;
+}) {
+  type Msg = { role: "user" | "assistant"; content: string };
+  const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, streaming]);
 
-  const send = async (text?: string) => {
+  const send = async (text?: string, attempt = 0) => {
     const q = (text ?? input).trim();
-    if (!q || loading) return;
+    if (!q || streaming) return;
     setErr(null);
-    const next = [...messages, { role: "user" as const, content: q }];
-    setMessages(next);
+    const history: Msg[] = [...messages, { role: "user", content: q }];
+    setMessages([...history, { role: "assistant", content: "" }]);
     setInput("");
-    setLoading(true);
+    setStreaming(true);
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     try {
-      const res = await runChat({ data: { messages: next } });
-      setMessages([...next, { role: "assistant", content: res.content }]);
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: history, language: lang }),
+        signal: ctrl.signal,
+      });
+      if (!res.ok || !res.body) {
+        const t = await res.text().catch(() => "");
+        throw new Error(t || `PulseAI is unavailable (${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        setMessages([...history, { role: "assistant", content: acc }]);
+      }
+      if (!acc) throw new Error("Empty response from PulseAI.");
     } catch (e) {
-      setErr((e as Error).message);
+      const msg = (e as Error).message ?? "Unknown error";
+      // Automatic single retry on transient network failure
+      if (attempt === 0 && /network|fetch|failed|502|503|504/i.test(msg)) {
+        setMessages(history);
+        await new Promise((r) => setTimeout(r, 800));
+        setStreaming(false);
+        return send(q, 1);
+      }
+      setMessages(history);
+      setErr(
+        "PulseAI couldn't respond right now. Please check your connection and try again.",
+      );
     } finally {
-      setLoading(false);
+      abortRef.current = null;
+      setStreaming(false);
     }
   };
 
@@ -683,6 +723,27 @@ function AIAssistantSection() {
         sub="Server-side AI companion. Ask about vitals, sepsis risk, or medication interactions."
       />
       <GlassCard>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-xs uppercase tracking-widest text-neutral-400">
+            Multilingual clinical co-pilot
+          </div>
+          <label className="flex items-center gap-2 text-xs text-neutral-500">
+            <span>Language</span>
+            <select
+              aria-label="Assistant language"
+              value={lang}
+              onChange={(e) => setLang(e.target.value)}
+              className="rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs text-neutral-700 outline-none focus:border-[#B89AF6]"
+            >
+              {LANGS.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.flag} {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
         {messages.length === 0 && (
           <div className="rounded-2xl bg-gradient-to-br from-[#F7B58C]/20 via-[#E9C5E9]/30 to-[#B89AF6]/20 p-5 text-sm text-neutral-700">
             <div className="text-xs uppercase tracking-widest text-neutral-500">PulseAI · Live insight</div>
@@ -695,6 +756,7 @@ function AIAssistantSection() {
                 "Summarize sepsis red flags to watch tonight.",
                 "Metformin + contrast — safe for tomorrow's CT?",
                 "Interpret HR 92, SpO₂ 94%, temp 38.1°C, WBC 14.2.",
+                "Explain how PulseAI monitors patients.",
               ].map((s) => (
                 <button
                   key={s}
@@ -719,14 +781,26 @@ function AIAssistantSection() {
                     : "mr-auto max-w-[92%] border border-white/70 bg-white/70 text-neutral-700"
                 }`}
               >
-                {m.role === "assistant" ? <Markdown content={m.content} /> : <p className="whitespace-pre-wrap">{m.content}</p>}
+                {m.role === "assistant" ? (
+                  m.content ? (
+                    <div className="relative">
+                      <Markdown content={m.content} />
+                      {streaming && i === messages.length - 1 && (
+                        <span className="ml-0.5 inline-block h-4 w-1.5 translate-y-0.5 animate-pulse rounded-sm bg-[#B89AF6]" />
+                      )}
+                    </div>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-neutral-500">
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#F7B58C]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#E9C5E9] [animation-delay:120ms]" />
+                      <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#B89AF6] [animation-delay:240ms]" />
+                    </span>
+                  )
+                ) : (
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                )}
               </div>
             ))}
-            {loading && (
-              <div className="mr-auto flex max-w-[85%] items-center gap-2 rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-xs text-neutral-500">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#B89AF6]" /> PulseAI is thinking…
-              </div>
-            )}
           </div>
         )}
 
@@ -746,16 +820,23 @@ function AIAssistantSection() {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about a patient…"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Ask PulseAI in any supported language…"
+            aria-label="Message PulseAI"
             className="flex-1 rounded-full border border-white/70 bg-white/70 px-4 py-2.5 text-sm outline-none placeholder:text-neutral-400 focus:border-[#B89AF6]"
           />
           <button
             type="submit"
-            disabled={loading || !input.trim()}
+            disabled={streaming || !input.trim()}
             className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)] transition disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {streaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Ask
           </button>
         </form>
