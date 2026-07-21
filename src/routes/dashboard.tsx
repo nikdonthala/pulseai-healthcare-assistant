@@ -28,6 +28,7 @@ import { EcgCanvas, StreamLine } from "@/components/EcgCanvas";
 import { SearchPalette, type SearchItem } from "@/components/SearchPalette";
 import { chatCopilot, summarizeRadiology } from "@/lib/ai.functions";
 import { Markdown } from "@/lib/markdown";
+import { PATIENTS, getPatient, type Patient } from "@/lib/patients";
 
 /** Supported multilingual assistant languages (BCP-47 for SpeechRecognition). */
 export const LANGS: { code: string; bcp47: string; label: string; flag: string }[] = [
@@ -86,6 +87,8 @@ function Overview() {
   const active = useScrollSpy(ids);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [lang, setLang] = useState("en");
+  const [patientId, setPatientId] = useState(PATIENTS[0].id);
+  const patient = getPatient(patientId);
   const bcp47 = LANGS.find((l) => l.code === lang)?.bcp47 ?? "en-US";
 
   const commands: VoiceCommand[] = useMemo(
@@ -105,12 +108,12 @@ function Overview() {
   const searchItems: SearchItem[] = useMemo(
     () => [
       ...SECTIONS.map((s) => ({ id: s.id, label: s.label, section: "Navigation", keywords: s.phrases.join(" ") })),
-      { id: "patients", label: "Amelia Hart · P-1042 · ICU-04", section: "Patients", keywords: "amelia hart post-op cardiac" },
-      { id: "patients", label: "James O'Neill · P-1043 · ICU-12", section: "Patients", keywords: "james oneill sepsis" },
-      { id: "patients", label: "Priya Shah · P-1044 · ICU-03", section: "Patients", keywords: "priya shah pneumonia" },
-      { id: "patients", label: "Marcus Lee · P-1045 · ICU-09", section: "Patients", keywords: "marcus lee arrhythmia" },
-      { id: "patients", label: "Sofia García · P-1046 · ICU-05", section: "Patients", keywords: "sofia garcia post-partum" },
-      { id: "patients", label: "Henrik Bakke · P-1047 · ICU-11", section: "Patients", keywords: "henrik bakke copd" },
+      ...PATIENTS.map((p) => ({
+        id: "patients",
+        label: `${p.name} · ${p.id} · ${p.bed}`,
+        section: "Patients",
+        keywords: `${p.name} ${p.id} ${p.bed} ${p.condition} ${p.diagnosis} ${p.doctor}`,
+      })),
       { id: "reports", label: "Ward 3B daily vitals summary", section: "Reports" },
       { id: "reports", label: "Sepsis risk cohort — weekly", section: "Reports" },
       { id: "alerts", label: "Rising sepsis risk — James O'Neill", section: "Alerts" },
@@ -228,12 +231,18 @@ function Overview() {
           <div className="mx-auto max-w-6xl px-5 pb-32 pt-6 sm:px-8">
             <DashboardSection />
             <LiveMonitoringSection />
-            <PatientsSection />
-            <AIAssistantSection lang={lang} setLang={setLang} />
+            <PatientsSection
+              patientId={patientId}
+              onSelect={(id) => {
+                setPatientId(id);
+                scrollToSection("timeline");
+              }}
+            />
+            <AIAssistantSection lang={lang} setLang={setLang} patient={patient} />
             <EHRSection />
             <RadiologySection />
             <AlertsSection />
-            <TimelineSection />
+            <TimelineSection patientId={patientId} onSelect={setPatientId} />
             <ReportsSection />
             <SettingsSection />
 
