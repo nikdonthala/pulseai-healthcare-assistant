@@ -29,6 +29,20 @@ import { SearchPalette, type SearchItem } from "@/components/SearchPalette";
 import { chatCopilot, summarizeRadiology } from "@/lib/ai.functions";
 import { Markdown } from "@/lib/markdown";
 
+/** Supported multilingual assistant languages (BCP-47 for SpeechRecognition). */
+export const LANGS: { code: string; bcp47: string; label: string; flag: string }[] = [
+  { code: "en", bcp47: "en-US", label: "English", flag: "🇺🇸" },
+  { code: "hi", bcp47: "hi-IN", label: "हिन्दी", flag: "🇮🇳" },
+  { code: "te", bcp47: "te-IN", label: "తెలుగు", flag: "🇮🇳" },
+  { code: "ta", bcp47: "ta-IN", label: "தமிழ்", flag: "🇮🇳" },
+  { code: "mr", bcp47: "mr-IN", label: "मराठी", flag: "🇮🇳" },
+  { code: "ur", bcp47: "ur-PK", label: "اردو", flag: "🇵🇰" },
+  { code: "es", bcp47: "es-ES", label: "Español", flag: "🇪🇸" },
+  { code: "fr", bcp47: "fr-FR", label: "Français", flag: "🇫🇷" },
+  { code: "it", bcp47: "it-IT", label: "Italiano", flag: "🇮🇹" },
+  { code: "ru", bcp47: "ru-RU", label: "Русский", flag: "🇷🇺" },
+];
+
 const HeartScene = lazy(() =>
   import("@/components/HeartScene").then((m) => ({ default: m.HeartScene })),
 );
@@ -71,6 +85,8 @@ function Overview() {
   const ids = useMemo(() => SECTIONS.map((s) => s.id), []);
   const active = useScrollSpy(ids);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [lang, setLang] = useState("en");
+  const bcp47 = LANGS.find((l) => l.code === lang)?.bcp47 ?? "en-US";
 
   const commands: VoiceCommand[] = useMemo(
     () => [
@@ -83,6 +99,7 @@ function Overview() {
   const { listening, transcript, supported, start, stop } = useVoiceNav(
     commands,
     (target) => scrollToSection(target),
+    bcp47,
   );
 
   const searchItems: SearchItem[] = useMemo(
@@ -212,7 +229,7 @@ function Overview() {
             <DashboardSection />
             <LiveMonitoringSection />
             <PatientsSection />
-            <AIAssistantSection />
+            <AIAssistantSection lang={lang} setLang={setLang} />
             <EHRSection />
             <RadiologySection />
             <AlertsSection />
