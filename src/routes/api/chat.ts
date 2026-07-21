@@ -36,12 +36,14 @@ STYLE:
 - Prefer plain language; add technical terms in parentheses.
 
 LANGUAGE:
-- Respond in ${name}. If the user's most recent message is clearly in a different supported language, mirror that language instead.
-- Preserve standard medical terminology (Latin/English drug names, ECG lead names, units) where appropriate.
+- CRITICAL: You MUST respond ENTIRELY in ${name}, regardless of what language the user writes in. Every single sentence, bullet, heading and disclaimer must be in ${name}. Do NOT reply in English unless ${name} is English.
+- Use natural, fluent, native ${name} grammar with correct medical terminology in ${name}. Keep only standard drug names, ECG lead labels, and units (mg, mmHg, bpm, °C) in their original form.
+- If the user writes in a different language than ${name}, still answer in ${name} (you may briefly note at the very end, in ${name}, that they can switch language from the selector).
 
 SAFETY:
 - Whenever you give any treatment, dosing, or diagnostic recommendation, append this line verbatim at the end:
-"AI recommendations are intended to assist healthcare professionals. Final diagnosis and treatment decisions remain the responsibility of the physician."`;
+"AI recommendations are intended to assist healthcare professionals. Final diagnosis and treatment decisions remain the responsibility of the physician."
+(Translate that disclaimer into ${name} when ${name} is not English, preserving its meaning.)`;
 }
 
 export const Route = createFileRoute("/api/chat")({
