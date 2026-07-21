@@ -246,8 +246,9 @@ function TopBar({
   onMic: () => void;
   onOpenSearch: () => void;
 }) {
-  const [time, setTime] = useState(() => new Date());
+  const [time, setTime] = useState<Date | null>(null);
   useEffect(() => {
+    setTime(new Date());
     const t = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
@@ -283,11 +284,13 @@ function TopBar({
             <span className="pointer-events-none absolute -inset-0.5 -z-10 rounded-full bg-[#F06D6D]/30 blur-md" />
           )}
         </button>
-        <div className="hidden text-right text-xs text-neutral-500 md:block">
-          <div className="font-mono text-neutral-700">
-            {time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+        <div className="hidden text-right text-xs text-neutral-500 md:block" suppressHydrationWarning>
+          <div className="font-mono text-neutral-700" suppressHydrationWarning>
+            {time ? time.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--:--:--"}
           </div>
-          <div>{time.toLocaleDateString([], { weekday: "short", day: "2-digit", month: "short" })}</div>
+          <div suppressHydrationWarning>
+            {time ? time.toLocaleDateString([], { weekday: "short", day: "2-digit", month: "short" }) : ""}
+          </div>
         </div>
         <div className="hidden items-center gap-1.5 rounded-full border border-emerald-200/70 bg-emerald-50/70 px-3 py-1 text-xs text-emerald-700 md:flex">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" /> Live
