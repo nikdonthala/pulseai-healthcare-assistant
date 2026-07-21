@@ -698,6 +698,7 @@ function AIAssistantSection({
   const [err, setErr] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const sendRef = useRef<(text?: string, attempt?: number) => Promise<void>>();
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
