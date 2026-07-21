@@ -238,11 +238,13 @@ function TopBar({
   supported,
   transcript,
   onMic,
+  onOpenSearch,
 }: {
   listening: boolean;
   supported: boolean;
   transcript: string;
   onMic: () => void;
+  onOpenSearch: () => void;
 }) {
   const [time, setTime] = useState(() => new Date());
   useEffect(() => {
@@ -253,11 +255,16 @@ function TopBar({
   return (
     <div className="sticky top-0 z-30 border-b border-white/60 bg-white/50 backdrop-blur-2xl">
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-5 py-3 sm:px-8">
-        <div className="flex flex-1 items-center gap-2 rounded-full border border-white/70 bg-white/60 px-4 py-2 text-sm text-neutral-500 shadow-[0_6px_20px_-14px_rgba(0,0,0,0.15)]">
+        <button
+          type="button"
+          onClick={onOpenSearch}
+          className="flex flex-1 items-center gap-2 rounded-full border border-white/70 bg-white/60 px-4 py-2 text-left text-sm text-neutral-500 shadow-[0_6px_20px_-14px_rgba(0,0,0,0.15)] transition hover:bg-white/80"
+        >
           <Search className="h-4 w-4" />
           <span>Search patients, vitals, pages…</span>
           <kbd className="ml-auto rounded-md bg-white/80 px-1.5 py-0.5 text-[10px] font-medium text-neutral-500">⌘K</kbd>
-        </div>
+        </button>
+
         <button
           onClick={onMic}
           disabled={!supported}
