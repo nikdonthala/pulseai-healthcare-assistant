@@ -587,8 +587,9 @@ function DashboardSection() {
           </div>
           <div className="relative h-[280px] overflow-hidden rounded-2xl border border-white/60 bg-gradient-to-br from-white/60 to-white/20">
             <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-neutral-400">Loading…</div>}>
-              <HeartScene />
+              <HeartScene bpm={v.hr} />
             </Suspense>
+
           </div>
         </GlassCard>
       </div>
