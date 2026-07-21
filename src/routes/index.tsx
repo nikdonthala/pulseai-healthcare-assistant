@@ -77,7 +77,7 @@ function Overview() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const hash = window.location.hash.replace("#", "");
-    if (hash && ids.includes(hash)) {
+    if (hash && (ids as string[]).includes(hash)) {
       requestAnimationFrame(() => scrollToSection(hash));
     }
   }, [ids]);
