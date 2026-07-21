@@ -43,29 +43,29 @@
 
 :root {
   --radius: 0.75rem;
-  /* Deep clinical space */
-  --background: oklch(0.16 0.02 240);
-  --foreground: oklch(0.96 0.01 220);
-  --card: oklch(0.20 0.025 240);
-  --card-foreground: oklch(0.96 0.01 220);
-  --popover: oklch(0.20 0.025 240);
-  --popover-foreground: oklch(0.96 0.01 220);
-  --primary: oklch(0.78 0.15 195);           /* cyan/teal — medical instrument */
-  --primary-foreground: oklch(0.16 0.02 240);
-  --secondary: oklch(0.28 0.03 240);
-  --secondary-foreground: oklch(0.96 0.01 220);
-  --muted: oklch(0.24 0.02 240);
-  --muted-foreground: oklch(0.68 0.02 230);
-  --accent: oklch(0.72 0.18 25);             /* pulse red */
-  --accent-foreground: oklch(0.98 0.01 220);
-  --destructive: oklch(0.65 0.24 27);
-  --destructive-foreground: oklch(0.98 0.01 220);
-  --border: oklch(0.30 0.02 240 / 60%);
-  --input: oklch(0.30 0.02 240 / 60%);
-  --ring: oklch(0.78 0.15 195);
-  --vital: oklch(0.80 0.18 145);             /* ECG green */
-  --pulse: oklch(0.72 0.22 25);
-  --glass: oklch(0.22 0.03 240 / 55%);
+  /* Warm ivory clinical canvas */
+  --background: oklch(0.985 0.012 60);
+  --foreground: oklch(0.22 0.02 40);
+  --card: oklch(1 0 0 / 55%);
+  --card-foreground: oklch(0.22 0.02 40);
+  --popover: oklch(0.99 0.008 60);
+  --popover-foreground: oklch(0.22 0.02 40);
+  --primary: oklch(0.72 0.13 320);
+  --primary-foreground: oklch(0.99 0.005 60);
+  --secondary: oklch(0.95 0.02 50);
+  --secondary-foreground: oklch(0.22 0.02 40);
+  --muted: oklch(0.96 0.015 55);
+  --muted-foreground: oklch(0.55 0.02 40);
+  --accent: oklch(0.78 0.14 30);
+  --accent-foreground: oklch(0.22 0.02 40);
+  --destructive: oklch(0.65 0.22 25);
+  --destructive-foreground: oklch(0.99 0.005 60);
+  --border: oklch(1 0 0 / 65%);
+  --input: oklch(1 0 0 / 65%);
+  --ring: oklch(0.72 0.13 320);
+  --vital: oklch(0.72 0.16 145);
+  --pulse: oklch(0.68 0.20 25);
+  --glass: oklch(1 0 0 / 55%);
 }
 
 @layer base {
@@ -73,9 +73,12 @@
     border-color: var(--color-border);
   }
   html, body {
-    background: radial-gradient(1200px 800px at 15% -10%, oklch(0.25 0.08 200 / 40%), transparent 60%),
-                radial-gradient(1000px 700px at 90% 110%, oklch(0.28 0.12 20 / 30%), transparent 60%),
-                var(--color-background);
+    background:
+      radial-gradient(1200px 800px at 8% -10%, rgba(247,181,140,0.35), transparent 60%),
+      radial-gradient(900px 700px at 100% 10%, rgba(233,197,233,0.35), transparent 60%),
+      radial-gradient(1000px 900px at 50% 120%, rgba(184,154,246,0.22), transparent 60%),
+      #FFF8F4;
+    background-attachment: fixed;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
