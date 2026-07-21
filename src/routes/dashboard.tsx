@@ -99,11 +99,17 @@ function Overview() {
     [],
   );
 
-  const { listening, transcript, supported, start, stop } = useVoiceNav(
+  const aiSendRef = useRef<((text: string) => void) | null>(null);
+  const { listening, transcript, supported, start, stop } = useVoiceNav({
     commands,
-    (target) => scrollToSection(target),
-    bcp47,
-  );
+    onCommand: (target) => scrollToSection(target),
+    onQuestion: (text) => {
+      scrollToSection("ai-assistant");
+      // Give the scroll a moment before sending so users see the message land.
+      setTimeout(() => aiSendRef.current?.(text), 250);
+    },
+    lang: bcp47,
+  });
 
   const searchItems: SearchItem[] = useMemo(
     () => [
