@@ -626,6 +626,35 @@ function PatientsSection() {
 }
 
 function AIAssistantSection() {
+  const runChat = useServerFn(chatCopilot);
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages, loading]);
+
+  const send = async (text?: string) => {
+    const q = (text ?? input).trim();
+    if (!q || loading) return;
+    setErr(null);
+    const next = [...messages, { role: "user" as const, content: q }];
+    setMessages(next);
+    setInput("");
+    setLoading(true);
+    try {
+      const res = await runChat({ data: { messages: next } });
+      setMessages([...next, { role: "assistant", content: res.content }]);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Section id="ai-assistant">
       <SectionHeader
@@ -634,34 +663,121 @@ function AIAssistantSection() {
         sub="Server-side AI companion. Ask about vitals, sepsis risk, or medication interactions."
       />
       <GlassCard>
-        <div className="rounded-2xl bg-gradient-to-br from-[#F7B58C]/20 via-[#E9C5E9]/30 to-[#B89AF6]/20 p-5 text-sm text-neutral-700">
-          <div className="text-xs uppercase tracking-widest text-neutral-500">PulseAI · Live insight</div>
-          <p className="mt-2">
-            Amelia's vitals are within normal range. Fatigue index is trending up — consider a short
-            rest period and hydration prompt before her afternoon session.
-          </p>
-        </div>
-        <div className="mt-4 flex gap-2">
+        {messages.length === 0 && (
+          <div className="rounded-2xl bg-gradient-to-br from-[#F7B58C]/20 via-[#E9C5E9]/30 to-[#B89AF6]/20 p-5 text-sm text-neutral-700">
+            <div className="text-xs uppercase tracking-widest text-neutral-500">PulseAI · Live insight</div>
+            <p className="mt-2">
+              Amelia's vitals are within normal range. Fatigue index is trending up — consider a short
+              rest period and hydration prompt before her afternoon session.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[
+                "Summarize sepsis red flags to watch tonight.",
+                "Metformin + contrast — safe for tomorrow's CT?",
+                "Interpret HR 92, SpO₂ 94%, temp 38.1°C, WBC 14.2.",
+              ].map((s) => (
+                <button
+                  key={s}
+                  onClick={() => send(s)}
+                  className="rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-xs text-neutral-700 hover:bg-white"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.length > 0 && (
+          <div ref={listRef} className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+            {messages.map((m, i) => (
+              <div
+                key={i}
+                className={`rounded-2xl px-4 py-3 text-sm ${
+                  m.role === "user"
+                    ? "ml-auto max-w-[85%] bg-gradient-to-br from-[#F7B58C]/40 to-[#B89AF6]/40 text-neutral-800"
+                    : "mr-auto max-w-[92%] border border-white/70 bg-white/70 text-neutral-700"
+                }`}
+              >
+                {m.role === "assistant" ? <Markdown content={m.content} /> : <p className="whitespace-pre-wrap">{m.content}</p>}
+              </div>
+            ))}
+            {loading && (
+              <div className="mr-auto flex max-w-[85%] items-center gap-2 rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-xs text-neutral-500">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#B89AF6]" /> PulseAI is thinking…
+              </div>
+            )}
+          </div>
+        )}
+
+        {err && (
+          <div className="mt-3 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2 text-xs text-red-700">
+            {err}
+          </div>
+        )}
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+          className="mt-4 flex gap-2"
+        >
           <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about a patient…"
             className="flex-1 rounded-full border border-white/70 bg-white/70 px-4 py-2.5 text-sm outline-none placeholder:text-neutral-400 focus:border-[#B89AF6]"
           />
           <button
-            className="rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)]"
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)] transition disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
           >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Ask
           </button>
-        </div>
-        <p className="mt-3 text-xs text-neutral-400">
-          Streaming Groq integration ships next — the server key will be added to this workspace.
-        </p>
+        </form>
       </GlassCard>
     </Section>
   );
 }
 
+const EHR_SAMPLE =
+  "62F, post-op day 3 (CABG). HR 92, BP 108/62, SpO₂ 94% on 2L NC, temp 38.1°C, RR 22. WBC 14.2, CRP 96, lactate 2.4, creatinine 1.1. On ceftriaxone 1g IV, metoprolol 25mg BD, atorvastatin 40 mg. PMH: T2DM, HTN. Complaint: new drowsiness, mild wound erythema.";
+
 function EHRSection() {
+  const runChat = useServerFn(chatCopilot);
+  const [ehrText, setEhrText] = useState("");
+  const [plan, setPlan] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const generate = async () => {
+    if (!ehrText.trim() || loading) return;
+    setLoading(true);
+    setErr(null);
+    setPlan("");
+    try {
+      const res = await runChat({
+        data: {
+          messages: [
+            {
+              role: "user",
+              content: `Analyze this patient snapshot and produce your structured plan.\n\n${ehrText}`,
+            },
+          ],
+        },
+      });
+      setPlan(res.content);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Section id="ehr">
       <SectionHeader
@@ -673,26 +789,51 @@ function EHRSection() {
         <GlassCard>
           <div className="text-xs uppercase tracking-widest text-neutral-400">Patient EHR</div>
           <textarea
+            value={ehrText}
+            onChange={(e) => setEhrText(e.target.value)}
             rows={9}
             placeholder="62F, post-op day 3, HR 92, SpO2 94%, temp 38.1°C, WBC 14.2, on ceftriaxone…"
             className="mt-3 w-full resize-none rounded-2xl border border-white/70 bg-white/70 p-4 text-sm outline-none focus:border-[#B89AF6]"
           />
           <div className="mt-3 flex gap-2">
-            <button className="rounded-full border border-white/70 bg-white/70 px-4 py-2 text-sm text-neutral-600">Reset sample</button>
             <button
-              className="rounded-full px-5 py-2 text-sm font-medium text-white"
+              type="button"
+              onClick={() => setEhrText(EHR_SAMPLE)}
+              className="rounded-full border border-white/70 bg-white/70 px-4 py-2 text-sm text-neutral-600 hover:bg-white"
+            >
+              Load sample
+            </button>
+            <button
+              type="button"
+              onClick={generate}
+              disabled={loading || !ehrText.trim()}
+              className="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)] disabled:opacity-40"
               style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
             >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Generate plan
             </button>
           </div>
+          {err && <div className="mt-3 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2 text-xs text-red-700">{err}</div>}
         </GlassCard>
         <GlassCard>
           <div className="text-xs uppercase tracking-widest text-neutral-400">AI clinical plan</div>
-          <p className="mt-3 text-sm text-neutral-500">
-            Your evidence-based plan will appear here — assessment, red flags, workup, treatment
-            with guideline citations, and monitoring.
-          </p>
+          {!plan && !loading && (
+            <p className="mt-3 text-sm text-neutral-500">
+              Your evidence-based plan will appear here — assessment, red flags, workup, treatment
+              with guideline citations, and monitoring.
+            </p>
+          )}
+          {loading && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-neutral-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#B89AF6]" /> Reasoning through the chart…
+            </div>
+          )}
+          {plan && (
+            <div className="mt-3 max-h-[520px] overflow-y-auto pr-2 text-sm text-neutral-700">
+              <Markdown content={plan} />
+            </div>
+          )}
         </GlassCard>
       </div>
     </Section>
@@ -700,37 +841,127 @@ function EHRSection() {
 }
 
 function RadiologySection() {
+  const runRad = useServerFn(summarizeRadiology);
+  const [file, setFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [context, setContext] = useState("");
+  const [modality, setModality] = useState("X-Ray");
+  const [result, setResult] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const onFile = (f: File | null) => {
+    setResult("");
+    setErr(null);
+    setFile(f);
+    if (!f) return setPreview(null);
+    const reader = new FileReader();
+    reader.onload = () => setPreview(reader.result as string);
+    reader.readAsDataURL(f);
+  };
+
+  const analyze = async () => {
+    if (!preview || loading) return;
+    setLoading(true);
+    setErr(null);
+    setResult("");
+    try {
+      const res = await runRad({
+        data: { imageDataUrl: preview, modality, clinical_context: context },
+      });
+      setResult(res.content);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Section id="radiology">
       <SectionHeader
         eyebrow="06 — Radiology"
         title="From dense report to plain language."
-        sub="Upload or paste an unstructured radiology report. PulseAI extracts key findings and generates a patient-friendly summary alongside the clinician view."
+        sub="Upload an X-ray, CT, MRI or ultrasound. PulseAI extracts key findings and generates a patient-friendly summary alongside the clinician view."
       />
       <div className="grid gap-5 lg:grid-cols-2">
         <GlassCard>
-          <div className="text-xs uppercase tracking-widest text-neutral-400">Radiology report</div>
-          <div className="mt-3 flex aspect-[4/3] items-center justify-center rounded-2xl border border-dashed border-white/70 bg-white/40 text-sm text-neutral-400">
-            Attach image or report
+          <div className="flex items-center justify-between">
+            <div className="text-xs uppercase tracking-widest text-neutral-400">Radiology report</div>
+            <select
+              value={modality}
+              onChange={(e) => setModality(e.target.value)}
+              className="rounded-full border border-white/70 bg-white/70 px-3 py-1 text-xs text-neutral-600 outline-none"
+            >
+              {["X-Ray", "CT", "MRI", "Ultrasound", "Other"].map((m) => (
+                <option key={m}>{m}</option>
+              ))}
+            </select>
           </div>
+          <label
+            htmlFor="rad-file"
+            className="mt-3 flex aspect-[4/3] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-white/70 bg-white/40 text-sm text-neutral-400 hover:bg-white/60"
+          >
+            {preview ? (
+              <img src={preview} alt="scan" className="h-full w-full object-contain" />
+            ) : (
+              <div className="flex flex-col items-center gap-2 p-6 text-center">
+                <Upload className="h-5 w-5 text-[#B89AF6]" />
+                Click to upload PNG / JPG
+                <span className="text-[11px] text-neutral-400">X-Ray · CT · MRI · Ultrasound</span>
+              </div>
+            )}
+            <input
+              id="rad-file"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => onFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <textarea
+            value={context}
+            onChange={(e) => setContext(e.target.value)}
+            rows={2}
+            placeholder="Clinical context (optional) — e.g. 45F, cough & fever x 5d, r/o pneumonia"
+            className="mt-3 w-full resize-none rounded-2xl border border-white/70 bg-white/70 p-3 text-sm outline-none focus:border-[#B89AF6]"
+          />
           <button
-            className="mt-3 w-full rounded-full py-2.5 text-sm font-medium text-white"
+            type="button"
+            onClick={analyze}
+            disabled={!file || loading}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm font-medium text-white shadow-[0_10px_24px_-10px_rgba(184,154,246,0.6)] disabled:opacity-40"
             style={{ background: "linear-gradient(135deg,#F7B58C,#B89AF6)" }}
           >
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
             Summarize
           </button>
+          {err && <div className="mt-3 rounded-xl border border-red-200 bg-red-50/70 px-3 py-2 text-xs text-red-700">{err}</div>}
         </GlassCard>
         <GlassCard>
           <div className="text-xs uppercase tracking-widest text-neutral-400">Dual-view summary</div>
-          <p className="mt-3 text-sm text-neutral-500">
-            Clinician bullets on top, plain-English patient summary below — with recommended next
-            steps.
-          </p>
+          {!result && !loading && (
+            <p className="mt-3 text-sm text-neutral-500">
+              Clinician bullets on top, plain-English patient summary below — with recommended next
+              steps.
+            </p>
+          )}
+          {loading && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-neutral-500">
+              <Loader2 className="h-4 w-4 animate-spin text-[#B89AF6]" /> Reading the image…
+            </div>
+          )}
+          {result && (
+            <div className="mt-3 max-h-[560px] overflow-y-auto pr-2 text-sm text-neutral-700">
+              <Markdown content={result} />
+            </div>
+          )}
         </GlassCard>
       </div>
     </Section>
   );
 }
+
 
 function AlertsSection() {
   const alerts = [
