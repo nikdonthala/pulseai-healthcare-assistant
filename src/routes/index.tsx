@@ -19,7 +19,7 @@ export const Route = createFileRoute("/")({
       {
         property: "og:description",
         content:
-          "Continuous vitals, sepsis lead time, and one-click patient timelines. Luxury AI for critical care.",
+          "An AI clinical OS that continuously monitors vitals, predicts deterioration, and unifies patient history — so clinicians act sooner, with more context.",
       },
     ],
   }),

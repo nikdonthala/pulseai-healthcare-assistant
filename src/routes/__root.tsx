@@ -77,20 +77,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "PulseAI — Clinical Co-Pilot" },
+      { title: "PulseAI — Every heartbeat, heard in time." },
       {
         name: "description",
         content:
-          "AI clinical co-pilot for general physicians: EHR synthesis, evidence-based treatment, and plain-language radiology summaries.",
+          "An AI clinical OS that continuously monitors vitals, predicts deterioration, and unifies patient history — so clinicians act sooner, with more context.",
       },
-      { property: "og:title", content: "PulseAI — Clinical Co-Pilot" },
+      { property: "og:title", content: "PulseAI — Every heartbeat, heard in time." },
       {
         property: "og:description",
         content:
-          "Evidence-based treatment suggestions and plain-language radiology summaries, in one console.",
+          "An AI clinical OS that continuously monitors vitals, predicts deterioration, and unifies patient history — so clinicians act sooner, with more context.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "PulseAI — Every heartbeat, heard in time." },
+      { name: "twitter:description", content: "An AI clinical OS that continuously monitors vitals, predicts deterioration, and unifies patient history — so clinicians act sooner, with more context." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/RC1cd9Ro3UX8aWkUOKHRq0DPov92/social-images/social-1784658296817-Screenshot_2026-07-21_235423.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/RC1cd9Ro3UX8aWkUOKHRq0DPov92/social-images/social-1784658296817-Screenshot_2026-07-21_235423.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
