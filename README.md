@@ -398,6 +398,6 @@ Nikhilesh Donthala,
 Ronith Thigulla. 
 Team contacts:- nikhileshsai7a23@gmail.com,
 ronith.thigulla@gmail.com
-**Team Name:** PulseAI
+**Website Name:** PulseAI
 
 Built with ❤️ for the **Next-Gen AI Hackathon 2026**.
